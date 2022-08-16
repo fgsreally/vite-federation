@@ -15,7 +15,7 @@ A module federation scheme based on VITE implementation, inspired by Webpack5 fe
 
 <br>
 P.S. I only tested the VUE project
-Webpack Module federation is currently not compatible ，If you insist on using it,<a src="https://github.com/originjs/vite-plugin-federation">vite-plugin-federation</a> may be helpful
+Webpack Module federation is currently not compatible ，If you insist on using it,<a href="https://github.com/originjs/vite-plugin-federation">vite-plugin-federation</a> may be helpful
 <br>
 
 ## Installation
@@ -132,7 +132,7 @@ If you want to debug both the remote module and the base module, you need to cha
 
 Since it is inherently ESM dependent, it is necessary to ensure that the same dependencies must come from the same source in all parts of the project. If a part of the project, such as the component library, is already packaged on the CDN, and the VUE in the component library does not specify a point, this can be a problem in hot mode packaging.importmap can solve it.
 
-If you feel that ImportMap is not compatible, consider this repository<a src="https://github.com/guybedford/es-module-shims">es-module-shims</a>
+If you feel that ImportMap is not compatible, consider this repository <a href="https://github.com/guybedford/es-module-shims">es-module-shims</a>
 
 
 ## next plan 

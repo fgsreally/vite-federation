@@ -16,7 +16,7 @@
 <br>
 
 附：我仅仅测试了 vue 项目
-目前不兼容 webpack 的模块联邦，如果想兼容，可以使用<a src="https://github.com/originjs/vite-plugin-federation">vite-plugin-federation</a>
+目前不兼容 webpack 的模块联邦，如果想兼容，可以使用<a href="https://github.com/originjs/vite-plugin-federation">vite-plugin-federation</a>
 <br>
 
 ## Installation
@@ -131,4 +131,4 @@ const test = import(/* @vite-ignore */ "http//localhost:8000/App.js");
 ## importMap
 
 因为本质是依赖 esm 的，所以必须保证所有的部分里面，相同的依赖必须来自同一个源，如果项目中一个部分，比如组件库，已经打包好放到 cdn 上了，而组件库中的 vue 并没有规定指向，这在热模式打包中会出问题，importmap 可以解决
-如果觉得 importmap 兼容性不好，可以考虑这个方案<a src="https://github.com/guybedford/es-module-shims">es-module-shims</a>
+如果觉得 importmap 兼容性不好，可以考虑这个方案<a href="https://github.com/guybedford/es-module-shims">es-module-shims</a>
