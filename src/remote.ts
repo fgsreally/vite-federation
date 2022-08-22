@@ -28,6 +28,7 @@ export default function remotePart(config: remoteConfig): any {
   // 返回的是插件对象
   return {
     name: "federation-r",
+    apply: "build",
     // enforce: "pre",
     options(opts: InputOptions) {
       if (!opts.external) opts.external = [];
