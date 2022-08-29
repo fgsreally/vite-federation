@@ -1,8 +1,10 @@
+import { resolve } from "path";
 import { init } from "es-module-lexer";
 import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
 import colors from "colors";
 import axios from "axios";
+import fs from "fs";
 import type {
   PluginContext,
   OutputBundle,
@@ -90,12 +92,12 @@ export default function remotePart(config: remoteConfig): any {
             }&${updateList.join("&")}`
           );
           if (ret) {
-            console.log(colors.cyan("send HMR information to home center"));
+            console.log(colors.cyan("send HMR information to home "));
           } else {
             console.log(colors.red(`fail to send HMR information\n`));
           }
         } catch (e) {
-          console.log(colors.red(`fail to collect HMR information fail\n${e}`));
+          console.log(colors.red(`fail to collect HMR information\n${e}`));
         }
       } else {
         for (let i in module) {
@@ -124,6 +126,19 @@ export default function remotePart(config: remoteConfig): any {
         );
         cancelScoped(code);
       }
+    },
+    closeBundle() {
+      let dir = resolve(process.cwd(), config.outDir || "remote");
+      fs.readdir(dir, (err, files) => {
+        if (err) {
+          console.log(colors.red(`write asset error`));
+        }
+        console.log(colors.green(`write asset list`));
+        fs.writeFileSync(
+          resolve(dir, "remoteList.json"),
+          JSON.stringify(files)
+        );
+      });
     },
   };
 }

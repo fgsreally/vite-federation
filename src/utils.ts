@@ -1,6 +1,6 @@
 import path from "path";
 import { ImportSpecifier, parse } from "es-module-lexer";
-import { homeConfig, externals } from "./types";
+import { homeConfig, externals, remoteListType } from "./types";
 import colors from "colors";
 
 export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
@@ -37,7 +37,7 @@ export function cancelScoped(source: string): string {
 }
 
 export function getAbsolutePath(url: string, rel: string) {
-  if (/^\.\//.test(url)) {
+  if (/^\.\//.test(rel)) {
     return url + rel.substring(1);
   }
   return false;
@@ -75,10 +75,10 @@ export function replaceImportDeclarations(
   return newSource;
 }
 
-export function ImportExpression(source: any) {
-  const [imports] = parse(source, "optional-sourcename");
-  return imports.map((i: { n: any }) => {
-    return i.n;
+export function ImportExpression(source: string) {
+  const [imports, exports] = parse(source, "optional-sourcename");
+  return imports.map((item, i) => {
+    return { url: item.n as string, name: exports[i] };
   });
 }
 export function replaceHMRImportDeclarations(
@@ -178,7 +178,11 @@ export function replaceBundleImportDeclarations(
   return newSource;
 }
 
-export function addSplitCss(source: string, config: homeConfig) {
+export function addSplitCss(
+  source: string,
+  config: homeConfig,
+  remoteList: remoteListType
+) {
   const [imports] = parse(source, "optional-sourcename");
   let addonCss = ``;
 
@@ -186,11 +190,22 @@ export function addSplitCss(source: string, config: homeConfig) {
     if (!i.n) continue;
     let ret = i.n.match(/^\!(.*)\/(.*)$/);
     if (ret && ret[1] && ret[2]) {
+      let projectName = ret[1];
+      let moduleName = ret[2];
+      for (let i of remoteList[projectName]) {
+        if (i.name === moduleName) {
+          moduleName = i.url.replace("./", "");
+          break;
+        }
+      }
       if (
-        (config.cssSplit as string[]).includes(ret[1]) &&
-        normalizeFileName(ret[2]).endsWith("js")
+        (config.cssSplit as string[]).includes(projectName) &&
+        normalizeFileName(moduleName).endsWith("js")
       ) {
-        addonCss += `import "!${ret[1]}/${path.basename(ret[2], ".js")}.css";`;
+        addonCss += `import "!${projectName}/${path.basename(
+          moduleName,
+          ".js"
+        )}.css";`;
       }
     }
   }

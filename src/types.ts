@@ -36,6 +36,12 @@ export interface homeConfig {
   importMap: boolean;
 }
 
+export type remoteListType = {
+  [key in string]: {
+    name: string;
+    url: string;
+  }[];
+};
 // if (module) {
 //   console.log(colors.yellow(`reload module ${id}`));
 //   for (let i of (module as ModuleNode).importers) {

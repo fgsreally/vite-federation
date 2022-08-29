@@ -3,5 +3,8 @@ import App from "./App.vue";
 
 import ElementPlus from "element-plus";
 import "element-plus/dist/index.css";
+import { vueDev } from "vite-federation/helper";
 // import "!app/style.css";
-createApp(App).use(ElementPlus).mount("#app");
+let app = createApp(App);
+
+app.use(vueDev()).use(ElementPlus).mount("#app");

@@ -3,7 +3,7 @@ import colors from "colors";
 import axios from "axios";
 import { extname, relative } from "path";
 import { init } from "es-module-lexer";
-import { homeConfig } from "./types";
+import { homeConfig, remoteListType } from "./types";
 import type {
   PluginOption,
   ResolvedConfig,
@@ -34,15 +34,12 @@ import {
   VIRTUAL_EMPTY,
 } from "./utils";
 import { IncomingMessage } from "http";
-let k = 0;
-const deps = [];
-let remoteSet: Set<string> = new Set();
 let HMRMap: Map<string, number> = new Map();
 const cdn = [];
 let mode = "build";
 const remoteCache: any = {};
 let server: ViteDevServer;
-let curTime: number;
+let remoteList: remoteListType = {};
 function reloadModule(id: string, time: number) {
   ///@virtual:vite-federation/!app/App
   const { moduleGraph } = server;
@@ -91,6 +88,7 @@ export default function myExample(config: homeConfig): any {
     name: "federation-h",
     // 初始化hooks，只走一次
     async options(opts: InputOptions) {
+      console.log(colors.green(`--vite-federation is running--`));
       //补充external,也可以在rollupOption中弄
       if (!opts.external) opts.external = [];
       for (let i in config.externals) {
@@ -101,7 +99,7 @@ export default function myExample(config: homeConfig): any {
       for (let i in config.externals) {
         cdn.push(config.externals[i]);
       }
-      if (!config.cache) return;
+
       await init;
       for (let i in config.remote) {
         //向远程请求清单
@@ -110,15 +108,27 @@ export default function myExample(config: homeConfig): any {
         let { data: entryRet } = await axios.get(
           config.remote[i] + "/remoteEntry.js"
         );
+        let { data: assetList } = await axios.get(
+          config.remote[i] + "/remoteList.json"
+        );
         let entryList = ImportExpression(entryRet);
+        console.log(colors.green(`module ${i}:`));
+        console.table(entryList);
+        console.log(colors.green(`module ${i} asset List:`));
+
+        console.log(assetList);
+        remoteList[i] = entryList;
+        if (!config.cache) break;
 
         for (let j of entryList) {
           //请求清单上js文件并缓存
-          let url = getAbsolutePath(config.remote[i], j);
+          let url = getAbsolutePath(config.remote[i], j.url);
+
           if (!url) break;
 
-          let fileName = getFileName(j);
+          let fileName = getFileName(j.url);
           let { data } = await axios.get(url);
+
           remoteCache[i][fileName] = data;
           compList[i].push(fileName);
         }
@@ -155,25 +165,32 @@ export default function myExample(config: homeConfig): any {
     async resolveId(id: string, i: any) {
       // /^\!(.*)\/(.*)$/
       let source = id.match(/^\!(.*)\/([^?]*)/);
+
       if (source && source[1] && source[2]) {
-        remoteSet.add(id);
+        let projectName = source[1];
+        let moduleName = source[2];
+        for (let i of remoteList[projectName]) {
+          if (i.name === moduleName) {
+            moduleName = i.url.replace("./", "");
+            break;
+          }
+        }
         if (!config.cache) return VIRTUAL_PREFIX + id;
-        if (remoteCache[source[1]][normalizeFileName(source[2])]) {
-          deps.push(i);
+        if (remoteCache[projectName][normalizeFileName(moduleName)]) {
           return VIRTUAL_PREFIX + id;
         } else {
           try {
             const ret = await axios.get(
-              `${config.remote[source[1]]}/${normalizeFileName(source[2])}`
+              `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
             );
-            remoteCache[source[1]][normalizeFileName(source[2])] = ret.data;
+            remoteCache[projectName][normalizeFileName(moduleName)] = ret.data;
             return VIRTUAL_PREFIX + id;
           } catch (e) {
             console.log(
               colors.grey(
-                `请求模块${config.remote[source[1]]}/${normalizeFileName(
-                  source[2]
-                )}不存在，返回空模块`
+                `Request module was not found, returns an empty module--${
+                  config.remote[projectName]
+                }/${normalizeFileName(moduleName)} `
               )
             );
             return VIRTUAL_EMPTY;
@@ -188,24 +205,46 @@ export default function myExample(config: homeConfig): any {
         let source = id.match(/\!(.*)\/([^?]*)/);
 
         if (source && source[1] && source[2]) {
-          if (!config.cache) {
-            const { data } = await axios.get(
-              `${config.remote[source[1]]}/${normalizeFileName(source[2])}`
-            );
-
-            return replaceImportDeclarations(data, config.externals, source[1]);
+          let projectName = source[1];
+          let moduleName = source[2];
+          for (let i of remoteList[projectName]) {
+            if (i.name === moduleName) {
+              moduleName = i.url.replace("./", "");
+              break;
+            }
           }
-          const fileName = normalizeFileName(source[2]);
+          if (!config.cache) {
+            try {
+              const { data } = await axios.get(
+                `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
+              );
+              return replaceImportDeclarations(
+                data,
+                config.externals,
+                projectName
+              );
+            } catch (e) {
+              console.log(
+                colors.grey(
+                  `Request module was not found, returns an empty module--${
+                    config.remote[projectName]
+                  }/${normalizeFileName(moduleName)}`
+                )
+              );
+              return "";
+            }
+          }
+          const fileName = normalizeFileName(moduleName);
 
-          if (!source || !remoteCache[source[1]][fileName]) return;
+          if (!source || !remoteCache[projectName][fileName]) return;
           if (extname(fileName) === ".js")
             return replaceImportDeclarations(
-              remoteCache[source[1]][fileName],
+              remoteCache[projectName][fileName],
               config.externals,
-              source[1]
+              projectName
             );
           if (extname(fileName) === ".css") {
-            return remoteCache[source[1]][fileName];
+            return remoteCache[projectName][fileName];
           }
         }
       }
@@ -231,7 +270,7 @@ export default function myExample(config: homeConfig): any {
           code = replaceHMRImportDeclarations(code, HMRMap);
         }
         if (Array.isArray(config.cssSplit)) {
-          code = addSplitCss(code, config);
+          code = addSplitCss(code, config, remoteList);
         }
 
         if (config.mode === "hot" && mode === "build") {
@@ -241,7 +280,7 @@ export default function myExample(config: homeConfig): any {
       }
     },
     transformIndexHtml(html: string) {
-      if (config.importMap) {
+      if (config.importMap && mode === "build") {
         return html.replace(
           /<title>(.*?)<\/title>/,
           (_: string, js: string) => {
