@@ -7,6 +7,7 @@ importers:
       '@cypress/vite-dev-server': ^3.0.0
       '@cypress/vue': ^3.1.0
       '@types/download': ^8.0.1
+      '@types/fs-extra': ^9.0.13
       '@types/node': ^17.0.40
       '@vitejs/plugin-vue': ^2.3.3
       '@vue/devtools-api': ^6.2.1
@@ -15,6 +16,7 @@ importers:
       commitizen: ^4.2.5
       cypress: ^10.2.0
       es-module-lexer: ^0.10.5
+      fs-extra: ^10.1.0
       rollup: ^2.75.5
       tsup: ^6.1.2
       typescript: ^4.5.4
@@ -22,10 +24,12 @@ importers:
       vue: ^3.2.25
       vue-tsc: ^0.34.7
     dependencies:
+      '@types/fs-extra': registry.npmmirror.com/@types/fs-extra/9.0.13
       '@vue/devtools-api': registry.npmmirror.com/@vue/devtools-api/6.2.1
       axios: registry.npmmirror.com/axios/0.27.2
       colors: registry.npmmirror.com/colors/1.4.0
       es-module-lexer: registry.npmmirror.com/es-module-lexer/0.10.5
+      fs-extra: registry.npmmirror.com/fs-extra/10.1.0
       vue: registry.npmmirror.com/vue/3.2.36
     devDependencies:
       '@cypress/vite-dev-server': registry.npmmirror.com/@cypress/vite-dev-server/3.0.0
@@ -536,6 +540,14 @@ packages:
       '@types/node': registry.npmmirror.com/@types/node/17.0.40
     dev: true
 
+  registry.npmmirror.com/@types/fs-extra/9.0.13:
+    resolution: {integrity: sha512-nEnwB++1u5lVDM2UI4c1+5R+FYaKfaAzS4OococimjVm3nQw3TuzH5UNsocrcTBbhnerblyHj4A49qXbIiZdpA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/fs-extra/-/fs-extra-9.0.13.tgz}
+    name: '@types/fs-extra'
+    version: 9.0.13
+    dependencies:
+      '@types/node': registry.npmmirror.com/@types/node/17.0.40
+    dev: false
+
   registry.npmmirror.com/@types/got/8.3.6:
     resolution: {integrity: sha512-nvLlj+831dhdm4LR2Ly+HTpdLyBaMynoOr6wpIxS19d/bPeHQxFU5XQ6Gp6ohBpxvCWZM1uHQIC2+ySRH1rGrQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/got/-/got-8.3.6.tgz}
     name: '@types/got'
@@ -574,7 +586,6 @@ packages:
     resolution: {integrity: sha512-UXdBxNGqTMtm7hCwh9HtncFVLrXoqA3oJW30j6XWp5BH/wu3mVeaxo7cq5benFdBw34HB3XDT2TRPI7rXZ+mDg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/node/-/node-17.0.40.tgz}
     name: '@types/node'
     version: 17.0.40
-    dev: true
 
   registry.npmmirror.com/@types/parse-json/4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/parse-json/-/parse-json-4.0.0.tgz}

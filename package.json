@@ -54,10 +54,12 @@
     "axios": "^0.27.2",
     "colors": "^1.4.0",
     "es-module-lexer": "^0.10.5",
+    "fs-extra": "^10.1.0",
     "vue": "^3.2.25"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^3.0.0",
+    "@types/fs-extra": "^9.0.13",
     "@cypress/vue": "^3.1.0",
     "@types/download": "^8.0.1",
     "@types/node": "^17.0.40",
