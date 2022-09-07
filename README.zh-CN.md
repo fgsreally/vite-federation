@@ -1,5 +1,7 @@
 # vite-federation
 
+**中文** | [English](./README.md)
+
 一种基于 vite 实现的模块联邦方案，灵感来源自 webpack5 federation。仅支持 esm 格式，
 
 ###### Features

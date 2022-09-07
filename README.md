@@ -1,5 +1,8 @@
 # vite-federation
 
+**English** | [中文](./README.zh-CN.md)
+
+
 A module federation scheme based on VITE implementation, inspired by Webpack5 federation. Supports ESM format only.
 
 ###### Features
