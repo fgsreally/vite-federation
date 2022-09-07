@@ -2,6 +2,7 @@ import fs from "fs";
 import colors from "colors";
 import axios from "axios";
 import { extname, relative } from "path";
+import URL from "url";
 import { init } from "es-module-lexer";
 import { homeConfig, remoteListType } from "./types";
 import type {
@@ -29,9 +30,14 @@ import {
   replaceBundleImportDeclarations,
   addSplitCss,
   VIRTUAL_PREFIX,
-  HMRHandler,
+  HMRModuleHandler,
   replaceHMRImportDeclarations,
   VIRTUAL_EMPTY,
+  downloadTSFiles,
+  analyseTSEntry,
+  updateTSconfig,
+  HMRTypesHandler,
+  log,
 } from "./utils";
 import { IncomingMessage } from "http";
 let HMRMap: Map<string, number> = new Map();
@@ -40,6 +46,7 @@ let mode = "build";
 const remoteCache: any = {};
 let server: ViteDevServer;
 let remoteList: remoteListType = {};
+
 function reloadModule(id: string, time: number) {
   ///@virtual:vite-federation/!app/App
   const { moduleGraph } = server;
@@ -81,7 +88,17 @@ function reloadModule(id: string, time: number) {
   }
 }
 
-export default function myExample(config: homeConfig): any {
+async function getTypes(url: string, project: string) {
+  let entryFileCode = await downloadTSFiles(url, project);
+
+  if (entryFileCode) {
+    let ret = await analyseTSEntry(entryFileCode as string);
+
+    updateTSconfig(project, ret);
+  }
+}
+
+export default function HomePlugin(config: homeConfig): any {
   let compList: any = {};
   // 返回的是插件对象
   return {
@@ -102,6 +119,9 @@ export default function myExample(config: homeConfig): any {
 
       await init;
       for (let i in config.remote) {
+        if (config.types) {
+          getTypes(config.remote[i] + "/types/types.json", i);
+        }
         //向远程请求清单
         compList[i] = [];
         remoteCache[i] = {};
@@ -112,11 +132,18 @@ export default function myExample(config: homeConfig): any {
           config.remote[i] + "/remoteList.json"
         );
         let entryList = ImportExpression(entryRet);
-        console.log(colors.green(`module ${i}:`));
-        console.table(entryList);
-        console.log(colors.green(`module ${i} asset List:`));
 
-        console.log(assetList);
+        if (config.info) {
+          log(`REMOTE-MODULE ${i}:`);
+          console.table(entryList);
+
+          log(`remote-module ${i} asset List:`);
+          console.log(assetList.files);
+
+          log(`remote-module ${i} files info`);
+          console.log(assetList);
+        }
+
         remoteList[i] = entryList;
         if (!config.cache) break;
 
@@ -144,11 +171,12 @@ export default function myExample(config: homeConfig): any {
       _server.middlewares.use((req: IncomingMessage, res, next) => {
         let url = req.url || "";
         try {
-          let ret = HMRHandler(url);
+          let ret = HMRModuleHandler(url);
 
-          let time = Date.now();
           if (ret) {
-            let allUpdateModule = ret
+            HMRTypesHandler(url, config.remote);
+            let time = Date.now();
+            let allUpdateModule = (ret as string[])
               .map((item) => reloadModule(item, time))
               .flat()
               .filter((i) => i) as unknown;
@@ -186,13 +214,13 @@ export default function myExample(config: homeConfig): any {
             remoteCache[projectName][normalizeFileName(moduleName)] = ret.data;
             return VIRTUAL_PREFIX + id;
           } catch (e) {
-            console.log(
-              colors.grey(
-                `Request module was not found, returns an empty module--${
-                  config.remote[projectName]
-                }/${normalizeFileName(moduleName)} `
-              )
+            log(
+              `Request module was not found, returns an empty module--${
+                config.remote[projectName]
+              }/${normalizeFileName(moduleName)} `,
+              "grey"
             );
+
             return VIRTUAL_EMPTY;
           }
         }
@@ -224,13 +252,13 @@ export default function myExample(config: homeConfig): any {
                 projectName
               );
             } catch (e) {
-              console.log(
-                colors.grey(
-                  `Request module was not found, returns an empty module--${
-                    config.remote[projectName]
-                  }/${normalizeFileName(moduleName)}`
-                )
+              log(
+                `Request module was not found, returns an empty module--${
+                  config.remote[projectName]
+                }/${normalizeFileName(moduleName)}`,
+                "grey"
               );
+
               return "";
             }
           }

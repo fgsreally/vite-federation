@@ -8,7 +8,7 @@ A module federation scheme based on VITE implementation, inspired by Webpack5 fe
 - ✨ has no impact on the original project converted to remote modules (either development or production environment)
 - ⚡️ Fewer requests than Webpack module federation (for both development and production environments)
 - 🏝 free call remote module (even if they don't transform base module, can without intrusion used in tools such as low code)
-- 🪐 can handle split CSS correctly
+- 🪐 can handle split CSS correctly,provide type support
 - 🦾 can use cache or hot update
 - 🌈 can be used in a variety of micro front-end/multi-module solutions
 - 😃 Easy access to service registry, fit for engineering scheme
@@ -107,6 +107,8 @@ By adding "app" to cssSplit, the CSS problem can be ignored, like this:
 import test1 from "@app/App";
 ```
 
+If the object is not a component but a pure JS module, it will show that the module is not found, but it won't break anything
+
 If you are using the CSS as a whole, you need to import it manually at the entry point
 Like this:
 
@@ -134,7 +136,31 @@ Since it is inherently ESM dependent, it is necessary to ensure that the same de
 
 If you feel that ImportMap is not compatible, consider this repository <a href="https://github.com/guybedford/es-module-shims">es-module-shims</a>
 
+## typescript
 
-## next plan 
-1 add snap test
-2 make a dynamic import playground
+There should be a built-in ability to generate types, but I haven't done that yet. To generate types, you have to rely on other plugins, but this mode may have some problems (e.g. hot update timing, file overwriting conflicts in Watch mode, etc.) due to the difficulty of transferring information between plugins.
+
+Separate the types files to the types folder in the remote folder (standard). The current implementation is to download all the files under remote/types at startup,rewrite tsconfig.json (this can be a big performance issue, consider turning them off at the second startup). Provides a little hot update capability through delayed operation.
+
+For more detail, see Example
+
+## structure
+
+> recommend structure
+
+    |-- dist
+    |-- remote(output)
+        ...
+        |-- remoteEntry.js
+        |-- remoteList.json(describe project info)
+        |-- types
+            |-- micro.d.ts(help "home" find module entry)
+            |-- types.json(describe d.ts files )
+            ...
+    |-- src
+        |-- micro.ts (core entry)
+        ...
+    |-- README.md
+    |-- remote.config.ts(federation config)
+    |-- vite.config.ts (normal config)
+    |-- package.json

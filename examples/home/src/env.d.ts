@@ -7,7 +7,7 @@ declare module "*.vue" {
   export default component;
 }
 
-declare module "!app/*" {
-  let m: any;
-  export { m };
-}
+// declare module "!app/*" {
+//   let test: any;
+//   export { test };
+// }

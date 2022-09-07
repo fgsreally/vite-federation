@@ -1,9 +1,8 @@
-import { resolve } from "path";
+import { relative, resolve } from "path";
 import { init } from "es-module-lexer";
-import type { ResolvedConfig } from "vite";
+import type { ResolvedConfig, Plugin } from "vite";
 import { remoteConfig } from "./types";
 import colors from "colors";
-import axios from "axios";
 import fs from "fs";
 import type {
   PluginContext,
@@ -16,6 +15,8 @@ import {
   cancelScoped,
   getModuleName,
   VIRTUAL_HMR_PREFIX,
+  sendHMRInfo,
+  log,
 } from "./utils";
 
 interface HMRInfo {
@@ -26,12 +27,15 @@ let HMRconfig: HMRInfo = {
   changeFile: "",
   cssFiles: {},
 };
+let metaData: any;
 export default function remotePart(config: remoteConfig): any {
+  metaData = config.meta || {};
+  let entryFile = config.entry || "micro.js";
   // 返回的是插件对象
   return {
     name: "federation-r",
     apply: "build",
-    // enforce: "pre",
+    enforce: "pre",
     options(opts: InputOptions) {
       if (!opts.external) opts.external = [];
       for (let i in config.externals) {
@@ -41,7 +45,7 @@ export default function remotePart(config: remoteConfig): any {
       }
     },
 
-    // vite特有钩子
+    //init config
     async config(opts: ResolvedConfig) {
       await init;
       if (!opts.build.outDir) {
@@ -49,7 +53,7 @@ export default function remotePart(config: remoteConfig): any {
       }
       if (!opts.build.lib) {
         opts.build.lib = {
-          entry: config.entry || "micro.js",
+          entry: entryFile,
           name: "remoteEntry",
           formats: ["es"],
           fileName: () => {
@@ -67,10 +71,11 @@ export default function remotePart(config: remoteConfig): any {
     async writeBundle(_: any, module: any) {
       let updateList: string[] = [];
 
-      if (HMRconfig.changeFile) {
+      if (HMRconfig.changeFile && config.HMR) {
         // if (module["style.css"].source.length !== HMRconfig.cssFileLength) {
         //   updateList.push("style.css");
         // }
+
         for (let i in module) {
           if (
             i.endsWith(".css") &&
@@ -86,18 +91,27 @@ export default function remotePart(config: remoteConfig): any {
           }
         }
         try {
-          let ret = await axios.get(
-            `${config.HMR?.homePort}/${VIRTUAL_HMR_PREFIX}/!${
-              config.HMR?.projectName
-            }&${updateList.join("&")}`
-          );
+          let ret = await sendHMRInfo({
+            url: `${config.HMR?.homePort}/${VIRTUAL_HMR_PREFIX}`,
+            project: config.HMR.projectName,
+            module: updateList,
+            file: relative(
+              resolve(process.cwd(), entryFile, "../"),
+              HMRconfig.changeFile
+            ).replace(/\\/g, "/"),
+          });
+          // let ret = await axios.get(
+          //   `${config.HMR?.homePort}/${VIRTUAL_HMR_PREFIX}/!${
+          //     config.HMR?.projectName
+          //   }&${updateList.join("&")}`
+          // );
           if (ret) {
-            console.log(colors.cyan("send HMR information to home "));
+            log("send HMR information to home ");
           } else {
-            console.log(colors.red(`fail to send HMR information\n`));
+            log(`fail to send HMR information\n`, "red");
           }
         } catch (e) {
-          console.log(colors.red(`fail to collect HMR information\n${e}`));
+          log(`fail to collect HMR information\n${e}`, "red");
         }
       } else {
         for (let i in module) {
@@ -121,23 +135,21 @@ export default function remotePart(config: remoteConfig): any {
 
     transform(code: string, id: string) {
       if (/.vue$/.test(id)) {
-        console.log(
-          colors.cyan(`\n${id} remove scoped style --[vue component]`)
-        );
+        log(` (.vue) remove scoped style --${id}`);
         cancelScoped(code);
       }
     },
     closeBundle() {
       let dir = resolve(process.cwd(), config.outDir || "remote");
+
       fs.readdir(dir, (err, files) => {
         if (err) {
-          console.log(colors.red(`write asset error`));
+          log(`write asset error`, "red");
         }
-        console.log(colors.green(`write asset list`));
-        fs.writeFileSync(
-          resolve(dir, "remoteList.json"),
-          JSON.stringify(files)
-        );
+        let p = resolve(dir, "remoteList.json");
+        log(`write asset list--${p}`, "green");
+        metaData.files = files;
+        fs.writeFileSync(p, JSON.stringify(metaData));
       });
     },
   };

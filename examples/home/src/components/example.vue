@@ -1,19 +1,21 @@
 <script setup lang="ts">
 // import "!app/App.css";
-import test1 from "!app/App";
+import app from "!app/App";
+import { test } from "!app/test";
 
 defineProps({
   msg: String,
 });
-function test() {
-  alert(12);
+function click() {
+  test();
+  alert("test click");
 }
 </script>
 
 <template>
   <div class="a">from remote center</div>
 
-  <test1 value="home value" @firstClick="test"></test1>
+  <app value="home value" @firstClick="click" ></app>
 </template>
 
 <style scoped>

@@ -1,5 +1,5 @@
 {
-  "name": "@fgs/home",
+  "name": "federation-home",
   "private": true,
   "version": "0.0.0",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "element-plus": "^2.2.2",
-    "vite-federation": "workspace:^0.0.0",
+    "vite-federation": "workspace:^0.0.3",
     "vue": "^3.2.25"
   },
   "devDependencies": {

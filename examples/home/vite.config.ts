@@ -22,6 +22,8 @@ export default defineConfig({
       cssSplit: ["app"],
       initFileList: [],
       importMap: true,
+      //types: true,//it will rewrite all d.ts
+      info: true,
     }),
   ],
 });

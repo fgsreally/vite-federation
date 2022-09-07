@@ -1,23 +1,36 @@
+import axios from "axios";
 import path from "path";
+import URL from "url";
 import { ImportSpecifier, parse } from "es-module-lexer";
-import { homeConfig, externals, remoteListType } from "./types";
-import colors from "colors";
+import { homeConfig, externals, remoteListType, ModulePathMap } from "./types";
+import colors, { Color } from "colors";
+import fs from "fs";
+import { outputFileSync, outputJSONSync, readJsonSync } from "fs-extra";
 
 export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
 export const VIRTUAL_EMPTY = "/@virtual:EmptyModule";
-
 export const VIRTUAL_HMR_PREFIX = "VIRTUAL-HMR";
+export const TYPES_CACHE = path.resolve(__dirname, "../", "types");
+const HMT_TYPES_TIMEOUT = 5000;
 
-export function HMRHandler(url: String) {
-  if (!url.startsWith(`/${VIRTUAL_HMR_PREFIX}`)) return false;
-
-  let virtualFile: string[] = url.slice(url.lastIndexOf("/") + 1).split("&");
-
-  let ret = [];
-  for (let i = 1; i < virtualFile.length; i++) {
-    ret.push(`${virtualFile[0]}/${virtualFile[i]}`);
+export function HMRModuleHandler(url: string) {
+  let ret = resolveURLQuery(url) as any;
+  if (ret) {
+    return ret.module.map((item: string) => `!${ret.project}/${item}`);
   }
-  return ret;
+}
+
+export function HMRTypesHandler(url: string, remoteConfig: externals) {
+  let { file, project } = resolveURLQuery(url) as any;
+  if (file.endsWith(".ts")) {
+    setTimeout(() => {
+      updateTypesFile(
+        URL.resolve(remoteConfig[project], "types/"),
+        project,
+        file.replace(/\.ts$/, ".d.ts")
+      );
+    }, HMT_TYPES_TIMEOUT);
+  }
 }
 
 // export function replaceStr2(
@@ -158,9 +171,7 @@ export function replaceBundleImportDeclarations(
   for (let i of imports) {
     for (let j in externals) {
       if (i.n === j) {
-        console.log(
-          colors.green(`\n${j} has been replaced to ${externals[j]}`)
-        );
+        log(` ${j} has been replaced to ${externals[j]}`);
         replacement.push([i, externals[j]]);
         break;
       }
@@ -214,4 +225,112 @@ export function addSplitCss(
 
 export function getModuleName(fileName: string) {
   return fileName.replace(path.extname(fileName), "");
+}
+
+export async function sendHMRInfo({
+  url,
+  project,
+  file,
+  module,
+}: {
+  url: string;
+  project: string;
+  file: string;
+  module: string[];
+}) {
+  return await axios.get(
+    `${url}?file=${file}&project=${project}&module=${JSON.stringify(module)}`
+  );
+}
+
+export function resolveURLQuery(url: string) {
+  if (!url.startsWith(`/${VIRTUAL_HMR_PREFIX}`)) return false;
+  let queryUrl = url.replace(`/${VIRTUAL_HMR_PREFIX}`, "");
+  let query = new URLSearchParams(queryUrl);
+
+  return {
+    file: query.get("file"),
+    project: query.get("project"),
+    module: JSON.parse(query.get("module") as string) as string[],
+  };
+}
+
+export async function analyseTSEntry(code: string) {
+  let [imports, exports] = await parse(code);
+  let modulePathMap: ModulePathMap = {};
+  exports.forEach((item, i) => {
+    modulePathMap[item] = imports[i].n as string;
+  });
+  return modulePathMap;
+}
+
+export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
+  let tsconfigPath = path.join(process.cwd(), "tsconfig.json");
+  if (fs.existsSync(tsconfigPath)) {
+    let tsconfig = readJsonSync(tsconfigPath);
+    JSON.parse(fs.readFileSync(tsconfigPath).toString());
+    if (!tsconfig.compilerOptions.paths) {
+      tsconfig.compilerOptions.paths = {};
+    }
+    for (let i in modulePathMap) {
+      tsconfig.compilerOptions.paths[`!${project}/${i}`] = [
+        "./" +
+          path
+            .join(
+              `node_modules/vite-federation/types/${project}`,
+              modulePathMap[i]
+            )
+            .replace(/\\/g, "/"),
+      ];
+    }
+    outputJSONSync(tsconfigPath, tsconfig);
+  }
+}
+
+export async function updateTypesFile(
+  baseUrl: string,
+  project: string,
+  filePath: string
+) {
+  try {
+    let { data } = await axios.get(URL.resolve(baseUrl, filePath));
+    let p = path.resolve(TYPES_CACHE, project, filePath);
+    outputFileSync(p, data);
+    log(`update types file --${p}`, "blue");
+  } catch (e) {}
+}
+export async function downloadTSFiles(url: string, project: string) {
+  let { data } = await axios.get(url);
+  let fileSet = data;
+  let entryFileCode;
+  for (let i of fileSet) {
+    if (i.endsWith(".ts")) {
+      let { data: code } = await axios.get(URL.resolve(url, i));
+      if (i === "micro.d.ts") {
+        entryFileCode = code.replace(/^export declare/gm, "export");
+      }
+
+      outputFileSync(path.resolve(TYPES_CACHE, project, i), code);
+    }
+  }
+  return entryFileCode;
+}
+
+let fileSet: string[] = [];
+let rootDir: string;
+export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
+  if (!rootDir) rootDir = dirPath;
+  fs.readdirSync(dirPath, { withFileTypes: true }).forEach(function (file) {
+    var filePath = path.join(dirPath, file.name);
+    if (file.isFile()) {
+      fileSet.push(path.relative(rootDir, filePath).replace("\\", "/"));
+    } else if (file.isDirectory()) {
+      traverseDic(filePath);
+    }
+  });
+  cb?.(fileSet);
+}
+
+export function log(msg: string, color: keyof Color = "green") {
+  console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
 }

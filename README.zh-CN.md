@@ -7,8 +7,8 @@
 - 💚 基座模块可以静态编译/动态导入远程模块(取决于需求)
 - ✨ 对改造为远程模块的原项目无任何影响(无论是开发还是生产环境)
 - ⚡️ 比 webpack 模块联邦更少的请求次数(无论是开发还是生产环境)
-- 🏝 可自由调用远程模块(即使不改造为基座模块，可以无侵入地在诸如低代码工具中使用)
-- 🪐 可以正确处理分割 css
+- 🏝  可自由调用远程模块(即使不改造为基座模块，可以无侵入地在诸如低代码工具中使用)
+- 🪐 可以正确处理分割 css,提供类型支持
 - 🦾 可使用缓存，也可热更新
 - 🌈 可以在微前端/多模块多种方案中使用
 - 😃 容易接入服务注册中心，契合工程化方案
@@ -107,6 +107,7 @@ import "@app/App.css";
 //in any .vue/jsx/tsx/ts/js files
 import test1 from "@app/App";
 ```
+如果对象并不是组件而是一个纯js模块，会显示找不到模块，但这不会破坏什么
 
 如果使用的是整体的 css，需要在入口手动引入
 像这样
@@ -132,3 +133,29 @@ const test = import(/* @vite-ignore */ "http//localhost:8000/App.js");
 
 因为本质是依赖 esm 的，所以必须保证所有的部分里面，相同的依赖必须来自同一个源，如果项目中一个部分，比如组件库，已经打包好放到 cdn 上了，而组件库中的 vue 并没有规定指向，这在热模式打包中会出问题，importmap 可以解决
 如果觉得 importmap 兼容性不好，可以考虑这个方案<a href="https://github.com/guybedford/es-module-shims">es-module-shims</a>
+
+## typescript
+
+其实应该内置生成 types 的功能，但我暂时没这么做，想生成 types 的话，需要依赖其他插件，但由于插件之间难以传递信息，这种模式可能会有部分问题（比如热更新时机，以及在 watch 模式下，文件覆盖冲突等）
+将类型文件单独放到 remote 文件夹下的 types 中（以此为标准），目前实现的效果是在启动服务的时候，下载 types 下的所有文件,重写tsconfig.json（这可能会带来很大的性能问题，在第二次启动时可以考虑关掉types），通过延时的操作提供了一点热更新的能力。总而言之，不建议使用
+
+## 文件结构
+
+> 推荐结构
+
+    |-- dist
+    |-- remote(输出)
+        ...
+        |-- remoteEntry.js
+        |-- remoteList.json(描述项目信息)
+        |-- types
+            |-- micro.d.ts(基座模块通过这个文件使得模块和类型能够一一对应)
+            |-- types.json(描述类型文件信息)
+            ...
+    |-- src
+        |-- micro.ts (入口)
+        ...
+    |-- README.md
+    |-- remote.config.ts(federation 配置)
+    |-- vite.config.ts (正常配置)
+    |-- package.json

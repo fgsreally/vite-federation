@@ -8,22 +8,18 @@ export interface remoteConfig {
   externals: externals;
   version?: number;
   importMap: boolean;
+
   HMR?: {
-    projectName?: string;
-    homePort?: string;
+    projectName: string;
+    homePort: string;
   };
+  meta?: Metadata | any;
 }
-// const config: any = {
-//   externals: {
-//     vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",
-//   },
-//   remote: {
-//     app: "http://127.0.0.1:8081",
-//   },
-//   mode: "hot",
-//   cssSplit: true,
-//   initFileList: [],
-// };
+
+type Metadata = {
+  version?: string;
+  author?: string;
+};
 
 export interface homeConfig {
   externals: externals;
@@ -34,6 +30,8 @@ export interface homeConfig {
   initFileList: string[];
   cache: boolean;
   importMap: boolean;
+  types?: boolean;
+  info?: boolean;
 }
 
 export type remoteListType = {
@@ -42,33 +40,5 @@ export type remoteListType = {
     url: string;
   }[];
 };
-// if (module) {
-//   console.log(colors.yellow(`reload module ${id}`));
-//   for (let i of (module as ModuleNode).importers) {
-//     moduleGraph.invalidateModule(i);
-//   }
-//   moduleGraph.invalidateModule(module);
-//   if (ws) {
-//     let t = Date.now();
-//     curTime = t;
-//     ws.send({
-//       type: "update",
-//       updates: [
-//         {
-//           type: "js-update",
-//           path: "/src/components/example.vue",
-//           acceptedPath: "/@virtual:vite-federation/!app/App",
-//           timestamp: t,
-//         },
-//         {
-//           type: "js-update",
-//           path: "/src/components/example.vue",
-//           acceptedPath: "/src/components/example.vue",
-//           timestamp: t,
-//         },
-//       ],
-//     });
-//     HMRMap.set("!app/App", t);
-//   }
-// }
-// }
+
+export type ModulePathMap = { [key in string]: string };
