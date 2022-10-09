@@ -1,12 +1,14 @@
 import axios from "axios";
-import path from "path";
+import path, { dirname, join, resolve } from "path";
 import URL from "url";
 import { ImportSpecifier, parse } from "es-module-lexer";
 import { homeConfig, externals, remoteListType, ModulePathMap } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
-import { outputFileSync, outputJSONSync, readJsonSync } from "fs-extra";
+import { outputFileSync, outputJSONSync } from "fs-extra";
+import MagicString from "magic-string";
 
+export const FEDERATION_RE = /\!(.*)\/([^?]*)/;
 export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
 export const VIRTUAL_EMPTY = "/@virtual:EmptyModule";
 export const VIRTUAL_HMR_PREFIX = "VIRTUAL-HMR";
@@ -62,37 +64,41 @@ export function normalizeFileName(name: string) {
   return `${name}${path.extname(name) ? "" : ".js"}`;
 }
 
-export function replaceImportDeclarations(
-  source: any,
-  externals: { [x: string]: any; vue?: string },
-  project: any
-) {
-  let newSource = source;
+export function replaceImportDeclarations(source: any, externals: externals) {
+  // let newSource = source;
+  let newSource = new MagicString(source);
+
   const [imports] = parse(source, "optional-sourcename");
   for (let i of imports as any) {
-    if (/^\.\//.test(i.n)) {
-      newSource = newSource.replace(
-        i.n,
-        `!${project}/${getFileName(i.n).replace(/\.js$/, "")}`
-      );
-    }
+    // if (/^\.\//.test(i.n)) {
+    //   newSource = newSource.replace(
+    //     i.n,
+    //     `!${project}/${getFileName(i.n).replace(/\.js$/, "")}`
+    //   );
+    // }
     for (let j in externals) {
       if (i.n === externals[j]) {
-        newSource = newSource.replace(i.n, j);
+        // newSource = newSource.replace(i.n, j);
+        newSource.overwrite(i.s, i.e, j);
 
         break;
       }
     }
   }
 
-  return newSource;
+  return newSource.toString();
 }
 
 export function ImportExpression(source: string) {
-  const [imports, exports] = parse(source, "optional-sourcename");
-  return imports.map((item, i) => {
-    return { url: item.n as string, name: exports[i] };
-  });
+  let ret: { url: string; name: string }[] = [];
+  source.replace(
+    /\s([^\s]*)\s=\simport\("(.*)"\)/g,
+    (_: string, name: string, i: string) => {
+      ret.push({ url: i, name: name });
+      return "";
+    }
+  );
+  return ret;
 }
 export function replaceHMRImportDeclarations(
   source: string,
@@ -110,37 +116,48 @@ export function replaceHMRImportDeclarations(
 
 export function replaceHotImportDeclarations(source: any, config: homeConfig) {
   const [imports] = parse(source, "optional-sourcename");
-  let newSource = source;
+  // let newSource = source;
+  let newSource = new MagicString(source);
   let cssImports = "";
   for (let i of imports as any) {
-    let ret = i.n.match(/^\!(.*)\/(.*)$/);
+    if (FEDERATION_RE.test(i.n)) {
+      let ret = i.n.match(FEDERATION_RE);
 
-    if (ret && ret[1] && ret[2]) {
       let fileName = normalizeFileName(ret[2]);
-      if (path.extname(fileName) === ".js")
-        newSource = newSource.replace(
-          i.n,
-          config.remote[ret[1]] + `/${fileName}`
-        );
-      if (path.extname(fileName) === ".css") {
-        cssImports = `loadCss("${config.remote[ret[1]]}/${fileName}")`;
-        newSource = newSource.replace(newSource.substring(i.ss, i.se), "");
+      if (path.extname(fileName) === ".js") {
+        newSource.overwrite(i.s, i.e, config.remote[ret[1]] + `/${fileName}`);
       }
+      if (path.extname(fileName) === ".css") {
+        cssImports += `\nloadCss("${config.remote[ret[1]]}/${fileName}");`;
+        newSource.overwrite(i.ss, i.se, "");
+      }
+      //if (path.extname(fileName) === ".js")
+      // newSource = newSource.replace(
+      //   i.n,
+      //   config.remote[ret[1]] + `/${fileName}`
+      // );
+      // if (path.extname(fileName) === ".css") {
+      //   cssImports = `loadCss("${config.remote[ret[1]]}/${fileName}")`;
+      //   newSource = newSource.replace(newSource.substring(i.ss, i.se), "");
+      // }
     }
   }
-  if (cssImports) {
-    newSource =
-      newSource +
-      `export function loadCss(url){
-      let css = document.createElement('link');
-      css.href = url;
-      css.rel = 'stylesheet';
-      css.type = 'text/css';
-      document.head.appendChild(css);
-    };` +
-      cssImports;
+  if (cssImports.length > 0) {
+    newSource
+      .prepend(`import {loadCss} from "vite-federation/helper"`)
+      .append(cssImports);
+    // newSource =
+    //   newSource +
+    //   `export function loadCss(url){
+    //   let css = document.createElement('link');
+    //   css.href = url;
+    //   css.rel = 'stylesheet';
+    //   css.type = 'text/css';
+    //   document.head.appendChild(css);
+    // };` +
+    //   cssImports;
   }
-  return newSource;
+  return newSource.toString();
 }
 // export function replaceBundleImportDeclarations(
 //   source: any,
@@ -164,8 +181,9 @@ export function replaceBundleImportDeclarations(
   externals: externals
 ) {
   const [imports] = parse(source, "optional-sourcename");
-  let newSource = ``;
-  // let newSource = source;
+  // let newSource = ``;
+  let newSource = new MagicString(source);
+
   let replacement: [ImportSpecifier, string][] = [];
 
   for (let i of imports) {
@@ -173,54 +191,40 @@ export function replaceBundleImportDeclarations(
       if (i.n === j) {
         log(` ${j} has been replaced to ${externals[j]}`);
         replacement.push([i, externals[j]]);
+        newSource.overwrite(i.s, i.e, externals[j]);
         break;
       }
     }
   }
-  let start = 0,
-    end: any = replacement[0]?.[0]?.s || undefined;
+  // let start = 0,
+  //   end: any = replacement[0]?.[0]?.s || undefined;
 
-  replacement.forEach((k, i) => {
-    newSource += source.substring(start, end) + k[1];
-    start = replacement[i][0].e;
-    end = replacement[i + 1]?.[0]?.s || undefined;
-  });
-  newSource += source.substring(start, end);
-  return newSource;
+  // replacement.forEach((k, i) => {
+  //   newSource += source.substring(start, end) + k[1];
+  //   start = replacement[i][0].e;
+  //   end = replacement[i + 1]?.[0]?.s || undefined;
+  // });
+  // newSource += source.substring(start, end);
+  return newSource.toString();
 }
 
-export function addSplitCss(
-  source: string,
-  config: homeConfig,
-  remoteList: remoteListType
-) {
+export function vueExtension(source: string) {
+  let newSource = new MagicString(source);
+
   const [imports] = parse(source, "optional-sourcename");
   let addonCss = ``;
 
   for (let i of imports as any) {
     if (!i.n) continue;
-    let ret = i.n.match(/^\!(.*)\/(.*)$/);
-    if (ret && ret[1] && ret[2]) {
-      let projectName = ret[1];
-      let moduleName = ret[2];
-      for (let i of remoteList[projectName]) {
-        if (i.name === moduleName) {
-          moduleName = i.url.replace("./", "");
-          break;
-        }
-      }
-      if (
-        (config.cssSplit as string[]).includes(projectName) &&
-        normalizeFileName(moduleName).endsWith("js")
-      ) {
-        addonCss += `import "!${projectName}/${path.basename(
-          moduleName,
-          ".js"
-        )}.css";`;
+    if (FEDERATION_RE.test(i.n)) {
+      let ret = i.n.match(FEDERATION_RE);
+      if (ret[2].endsWith(".vue")) {
+        newSource.overwrite(i.s, i.e, `${i.n.slice(0, -4)}`);
+        addonCss += `import "${i.n.replace(/\.vue$/, "")}.css"\n`;
       }
     }
   }
-  return addonCss + source;
+  return addonCss + newSource.toString();
 }
 
 export function getModuleName(fileName: string) {
@@ -265,26 +269,37 @@ export async function analyseTSEntry(code: string) {
 }
 
 export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
-  let tsconfigPath = path.join(process.cwd(), "tsconfig.json");
-  if (fs.existsSync(tsconfigPath)) {
-    let tsconfig = readJsonSync(tsconfigPath);
-    JSON.parse(fs.readFileSync(tsconfigPath).toString());
-    if (!tsconfig.compilerOptions.paths) {
-      tsconfig.compilerOptions.paths = {};
+  let tsconfig: any = { compilerOptions: { paths: {} } };
+
+  for (let i in modulePathMap) {
+    let jsPath =
+      "./" + join(`./types/${project}`, modulePathMap[i]).replace(/\\/g, "/");
+    tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
+    if (modulePathMap[i].endsWith(".vue")) {
+      tsconfig.compilerOptions.paths[`!${project}/${i}.vue`] = [jsPath];
     }
-    for (let i in modulePathMap) {
-      tsconfig.compilerOptions.paths[`!${project}/${i}`] = [
-        "./" +
-          path
-            .join(
-              `node_modules/vite-federation/types/${project}`,
-              modulePathMap[i]
-            )
-            .replace(/\\/g, "/"),
-      ];
-    }
-    outputJSONSync(tsconfigPath, tsconfig);
   }
+  outputJSONSync(resolve(__dirname, "../tsconfig.federation.json"), tsconfig);
+  // let tsconfigPath = path.join(process.cwd(), "tsconfig.json");
+  // if (fs.existsSync(tsconfigPath)) {
+  //   let tsconfig = readJsonSync(tsconfigPath);
+  //   JSON.parse(fs.readFileSync(tsconfigPath).toString());
+  //   if (!tsconfig.compilerOptions.paths) {
+  //     tsconfig.compilerOptions.paths = {};
+  //   }
+  //   for (let i in modulePathMap) {
+  //     tsconfig.compilerOptions.paths[`!${project}/${i}`] = [
+  //       "./" +
+  //         path
+  //           .join(
+  //             `node_modules/vite-federation/types/${project}`,
+  //             modulePathMap[i]
+  //           )
+  //           .replace(/\\/g, "/"),
+  //     ];
+  //   }
+  //   outputJSONSync(tsconfigPath, tsconfig);
+  // }
 }
 
 export async function updateTypesFile(
@@ -334,3 +349,12 @@ export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
 export function log(msg: string, color: keyof Color = "green") {
   console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
+
+// export function vueExtension(id: string) {
+//   let ext = id.split(".");
+//   if (ext[1] === "vue")
+//     return `
+//   export * from "${ext[0]}"
+//   import "${ext[0]}.css"
+//   `;
+// }

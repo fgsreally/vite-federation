@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // import "!app/App.css";
-import app from "!app/App";
+import app from "!app/App.vue";
+
 import { test } from "!app/test";
 
 defineProps({
@@ -15,7 +16,7 @@ function click() {
 <template>
   <div class="a">from remote center</div>
 
-  <app value="home value" @firstClick="click" ></app>
+  <app value="home value" @firstClick="click"></app>
 </template>
 
 <style scoped>

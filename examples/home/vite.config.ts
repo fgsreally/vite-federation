@@ -5,37 +5,20 @@ import { homePlugin } from "vite-federation";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    vue({
-      isProduction: false,
-    }),
+    vue(),
     homePlugin({
-      externals: {
-        vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",
-        "element-plus":
-          "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.12/index.full.mjs",
-      },
       remote: {
         app: "http://127.0.0.1:8080",
       },
-      mode: "cold",
+      mode: "hot",
       cache: false,
-      cssSplit: ["app"],
+      cssSplit: [],
       initFileList: [],
       importMap: true,
-      //types: true,//it will rewrite all d.ts
-      info: true,
+      types: true, //it will rewrite all d.ts
+      info: false,
     }),
   ],
 });
 
-// {
-//   externals: {
-//     vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",
-//   },
-//   remote: {
-//     app: "http://127.0.0.1:8080",
-//   },
-//   mode: "hot",
-//   cssSplit: true,
-//   initFileList: [],
-// }
+

@@ -1,4 +1,5 @@
 {
+    "extends": "./node_modules/vite-federation/tsconfig.federation.json",
     "compilerOptions": {
         "target": "esnext",
         "useDefineForClassFields": true,
@@ -15,14 +16,6 @@
             "dom"
         ],
         "skipLibCheck": true,
-        "paths": {
-            "!app/App": [
-                "./node_modules/vite-federation/types/app/App.vue"
-            ],
-            "!app/test": [
-                "./node_modules/vite-federation/types/app/components/test"
-            ]
-        }
     },
     "include": [
         "src/**/*.ts",

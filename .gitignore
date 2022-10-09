@@ -13,6 +13,7 @@ dist-ssr
 *.local
 remote
 types
+tsconfig.federation.json
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

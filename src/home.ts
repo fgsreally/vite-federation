@@ -4,7 +4,7 @@ import axios from "axios";
 import { extname, relative } from "path";
 import URL from "url";
 import { init } from "es-module-lexer";
-import { homeConfig, remoteListType } from "./types";
+import { externals, homeConfig, remoteListType } from "./types";
 import type {
   PluginOption,
   ResolvedConfig,
@@ -25,10 +25,8 @@ import {
   getAbsolutePath,
   normalizeFileName,
   getFileName,
-  replaceImportDeclarations,
   replaceHotImportDeclarations,
   replaceBundleImportDeclarations,
-  addSplitCss,
   VIRTUAL_PREFIX,
   HMRModuleHandler,
   replaceHMRImportDeclarations,
@@ -38,10 +36,12 @@ import {
   updateTSconfig,
   HMRTypesHandler,
   log,
+  vueExtension,
+  FEDERATION_RE,
+  replaceImportDeclarations,
 } from "./utils";
 import { IncomingMessage } from "http";
 let HMRMap: Map<string, number> = new Map();
-const cdn = [];
 let mode = "build";
 const remoteCache: any = {};
 let server: ViteDevServer;
@@ -54,8 +54,7 @@ function reloadModule(id: string, time: number) {
 
   if (module) {
     if (id.endsWith(".css")) {
-      console.log(colors.yellow(`reload module ${id} --[css]`));
-
+      log(`reload module ${id} --[css]`, "yellow");
       moduleGraph.invalidateModule(module);
 
       HMRMap.set(id, time);
@@ -81,7 +80,8 @@ function reloadModule(id: string, time: number) {
         });
       }
       moduleGraph.invalidateModule(module);
-      console.log(colors.yellow(`reload module ${id} --[js]`));
+      log(`reload module ${id} --[js]`, "yellow");
+
       HMRMap.set(id, time);
       return ret;
     }
@@ -89,12 +89,19 @@ function reloadModule(id: string, time: number) {
 }
 
 async function getTypes(url: string, project: string) {
-  let entryFileCode = await downloadTSFiles(url, project);
+  try {
+    let entryFileCode = await downloadTSFiles(url, project);
 
-  if (entryFileCode) {
-    let ret = await analyseTSEntry(entryFileCode as string);
+    if (entryFileCode) {
+      let ret = await analyseTSEntry(entryFileCode as string);
 
-    updateTSconfig(project, ret);
+      updateTSconfig(project, ret);
+    }
+  } catch (e) {
+    log(
+      `can't find remote module (${project}) type declaration (it should be at "/types/types.json")`,
+      "red"
+    );
   }
 }
 
@@ -105,59 +112,73 @@ export default function HomePlugin(config: homeConfig): any {
     name: "federation-h",
     // 初始化hooks，只走一次
     async options(opts: InputOptions) {
-      console.log(colors.green(`--vite-federation is running--`));
+      log(`--vite-federation is running--`);
       //补充external,也可以在rollupOption中弄
       if (!opts.external) opts.external = [];
+
+      let ext: externals = {};
+      await init;
+      for (let i in config.remote) {
+        try {
+          if (config.types) {
+            getTypes(config.remote[i] + "/types/types.json", i);
+          }
+          //向远程请求清单
+          compList[i] = [];
+          remoteCache[i] = {};
+          let { data: entryRet } = await axios.get(
+            config.remote[i] + "/remoteEntry.js"
+          );
+          let { data: assetInfo } = await axios.get(
+            config.remote[i] + "/remoteList.json"
+          );
+          let entryList = ImportExpression(entryRet);
+
+          ext = { ...ext, ...assetInfo.config.externals };
+
+          log(`REMOTE MODULE (${i}) MAP:`);
+          console.table(entryList);
+
+          log(`REMOTE MODULE (${i}) ASSET LIST:`);
+          console.table(assetInfo.files);
+
+          if (config.info) {
+            log(`REMOTE MODULE (${i}) CONFIG`);
+            console.log(assetInfo);
+          }
+
+          remoteList[i] = entryList;
+
+          if (!config.cache) break;
+
+          for (let j of entryList) {
+            //请求清单上js文件并缓存
+            let url = getAbsolutePath(config.remote[i], j.url);
+
+            if (!url) break;
+
+            let fileName = getFileName(j.url);
+            let { data } = await axios.get(url);
+
+            remoteCache[i][fileName] = data;
+            compList[i].push(fileName);
+          }
+        } catch (e) {
+          log(`can't find remote module (${i}) -- ${config.remote[i]}`, "red");
+          process.exit(1);
+        }
+      }
+
+      if (!config.externals) {
+        //auto import remote config
+        config.externals = ext;
+        log(`FINAL EXTERNALS :`);
+        console.log(ext);
+      }
+
       for (let i in config.externals) {
         if (!(opts.external as string[]).includes(i)) {
           (opts.external as string[]).push(i);
-        }
-      }
-      for (let i in config.externals) {
-        cdn.push(config.externals[i]);
-      }
-
-      await init;
-      for (let i in config.remote) {
-        if (config.types) {
-          getTypes(config.remote[i] + "/types/types.json", i);
-        }
-        //向远程请求清单
-        compList[i] = [];
-        remoteCache[i] = {};
-        let { data: entryRet } = await axios.get(
-          config.remote[i] + "/remoteEntry.js"
-        );
-        let { data: assetList } = await axios.get(
-          config.remote[i] + "/remoteList.json"
-        );
-        let entryList = ImportExpression(entryRet);
-
-        if (config.info) {
-          log(`REMOTE-MODULE ${i}:`);
-          console.table(entryList);
-
-          log(`remote-module ${i} asset List:`);
-          console.log(assetList.files);
-
-          log(`remote-module ${i} files info`);
-          console.log(assetList);
-        }
-
-        remoteList[i] = entryList;
-        if (!config.cache) break;
-
-        for (let j of entryList) {
-          //请求清单上js文件并缓存
-          let url = getAbsolutePath(config.remote[i], j.url);
-
-          if (!url) break;
-
-          let fileName = getFileName(j.url);
-          let { data } = await axios.get(url);
-
-          remoteCache[i][fileName] = data;
-          compList[i].push(fileName);
         }
       }
     },
@@ -190,11 +211,14 @@ export default function HomePlugin(config: homeConfig): any {
         }
       });
     },
-    async resolveId(id: string, i: any) {
+    async resolveId(id: string, i: string) {
       // /^\!(.*)\/(.*)$/
-      let source = id.match(/^\!(.*)\/([^?]*)/);
+      if (i.startsWith(VIRTUAL_PREFIX)) {
+        return URL.resolve(i, id);
+      }
 
-      if (source && source[1] && source[2]) {
+      if (FEDERATION_RE.test(id) && !id.startsWith(VIRTUAL_PREFIX)) {
+        let source = id.match(FEDERATION_RE) as string[];
         let projectName = source[1];
         let moduleName = source[2];
         for (let i of remoteList[projectName]) {
@@ -230,9 +254,9 @@ export default function HomePlugin(config: homeConfig): any {
       if (id === VIRTUAL_EMPTY) return "";
       if (id.startsWith(VIRTUAL_PREFIX)) {
         // let source = id.match(/^\0\@(.*)\/(.*)$/);
-        let source = id.match(/\!(.*)\/([^?]*)/);
 
-        if (source && source[1] && source[2]) {
+        if (FEDERATION_RE.test(id)) {
+          let source = id.match(FEDERATION_RE) as string[];
           let projectName = source[1];
           let moduleName = source[2];
           for (let i of remoteList[projectName]) {
@@ -241,16 +265,18 @@ export default function HomePlugin(config: homeConfig): any {
               break;
             }
           }
+
           if (!config.cache) {
             try {
               const { data } = await axios.get(
                 `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
               );
-              return replaceImportDeclarations(
-                data,
-                config.externals,
-                projectName
-              );
+              return data;
+              // return replaceImportDeclarations(
+              //   data,
+              //   config.externals,
+              //   projectName
+              // );
             } catch (e) {
               log(
                 `Request module was not found, returns an empty module--${
@@ -266,11 +292,12 @@ export default function HomePlugin(config: homeConfig): any {
 
           if (!source || !remoteCache[projectName][fileName]) return;
           if (extname(fileName) === ".js")
-            return replaceImportDeclarations(
-              remoteCache[projectName][fileName],
-              config.externals,
-              projectName
-            );
+            return remoteCache[projectName][fileName];
+          // return replaceImportDeclarations(
+          //   remoteCache[projectName][fileName],
+          //   config.externals,
+          //   projectName
+          // );
           if (extname(fileName) === ".css") {
             return remoteCache[projectName][fileName];
           }
@@ -283,7 +310,7 @@ export default function HomePlugin(config: homeConfig): any {
         if (/\.js$/.test(i)) {
           (data[i] as OutputChunk).code = replaceBundleImportDeclarations(
             (data[i] as OutputChunk).code,
-            config.externals
+            config.externals as externals
           );
         }
       }
@@ -291,14 +318,21 @@ export default function HomePlugin(config: homeConfig): any {
 
     transform(code: any, id: string) {
       if (
+        id.startsWith(VIRTUAL_PREFIX) &&
+        !id.endsWith(".css") &&
+        !config.importMap &&
+        mode !== "build"
+      ) {
+        code = replaceImportDeclarations(code, config.externals as externals);
+        return code;
+      }
+      if (
         /src(.*)\.(vue|js|ts|jsx|tsx)$/.test(id) &&
         !/node_modules\//.test(id)
       ) {
+        code = vueExtension(code);
         if (!config.cache && mode !== "build") {
           code = replaceHMRImportDeclarations(code, HMRMap);
-        }
-        if (Array.isArray(config.cssSplit)) {
-          code = addSplitCss(code, config, remoteList);
         }
 
         if (config.mode === "hot" && mode === "build") {

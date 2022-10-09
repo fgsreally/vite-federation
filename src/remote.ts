@@ -1,9 +1,10 @@
 import { relative, resolve } from "path";
 import { init } from "es-module-lexer";
-import type { ResolvedConfig, Plugin } from "vite";
+import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
-import colors from "colors";
 import fs from "fs";
+import contentHash from "content-hash";
+
 import type {
   PluginContext,
   OutputBundle,
@@ -37,6 +38,11 @@ export default function remotePart(config: remoteConfig): any {
     apply: "build",
     enforce: "pre",
     options(opts: InputOptions) {
+      // if (config.vendor) {
+      //   opts.manualChunks = {
+      //     federation_vendor: config.vendor,
+      //   };
+      // }
       if (!opts.external) opts.external = [];
       for (let i in config.externals) {
         if (!(opts.external as any).includes(i)) {
@@ -50,6 +56,9 @@ export default function remotePart(config: remoteConfig): any {
       await init;
       if (!opts.build.outDir) {
         opts.build.outDir = config.outDir || "remote";
+      }
+      if (config.cssSplit) {
+        opts.build.cssCodeSplit = true;
       }
       if (!opts.build.lib) {
         opts.build.lib = {
@@ -78,11 +87,15 @@ export default function remotePart(config: remoteConfig): any {
 
         for (let i in module) {
           if (
-            i.endsWith(".css") &&
-            module[i].source.length !== HMRconfig.cssFiles[i]
+            i.endsWith(".css") //&&
+
+            // module[i].source.length !== HMRconfig.cssFiles[i]
           ) {
-            updateList.push(i);
-            HMRconfig.cssFiles[i] = module[i].source.length;
+            let cssHash = contentHash.encode("onion", module[i].source);
+            if (cssHash !== HMRconfig.cssFiles[i]) {
+              updateList.push(i);
+              HMRconfig.cssFiles[i] = cssHash;
+            }
           }
         }
         for (let i of module["remoteEntry.js"].dynamicImports) {
@@ -116,7 +129,8 @@ export default function remotePart(config: remoteConfig): any {
       } else {
         for (let i in module) {
           if (i.endsWith(".css")) {
-            HMRconfig.cssFiles[i] = module[i].source.length;
+            let cssHash = contentHash.encode("onion", module[i].source);
+            HMRconfig.cssFiles[i] = cssHash;
           }
         }
       }
@@ -149,6 +163,7 @@ export default function remotePart(config: remoteConfig): any {
         let p = resolve(dir, "remoteList.json");
         log(`write asset list--${p}`, "green");
         metaData.files = files;
+        metaData.config = config;
         fs.writeFileSync(p, JSON.stringify(metaData));
       });
     },

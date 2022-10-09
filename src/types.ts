@@ -8,11 +8,12 @@ export interface remoteConfig {
   externals: externals;
   version?: number;
   importMap: boolean;
-
+  // vendor?: string[];
   HMR?: {
     projectName: string;
     homePort: string;
   };
+  cssSplit?: boolean;
   meta?: Metadata | any;
 }
 
@@ -22,11 +23,10 @@ type Metadata = {
 };
 
 export interface homeConfig {
-  externals: externals;
+  externals?: externals;
   version?: number;
   remote: externals;
   mode: "hot" | "cold";
-  cssSplit: string[] | false;
   initFileList: string[];
   cache: boolean;
   importMap: boolean;
