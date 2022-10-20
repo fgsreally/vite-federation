@@ -4,21 +4,20 @@ import { homePlugin } from "vite-federation";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    port: 4100,
+  },
   plugins: [
     vue(),
     homePlugin({
       remote: {
-        app: "http://127.0.0.1:8080",
+        app: "http://127.0.0.1:8081",
       },
       mode: "hot",
       cache: false,
-      cssSplit: [],
-      initFileList: [],
       importMap: true,
-      types: true, //it will rewrite all d.ts
+      types: true,
       info: false,
     }),
   ],
 });
-
-

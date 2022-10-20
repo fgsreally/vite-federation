@@ -1,20 +1,25 @@
 <script setup lang="ts">
 // import "!app/App.css";
 import app from "!app/App.vue";
-
+import { h, ref } from "vue";
 import { test } from "!app/test";
-
+import HelloWorld from "./HelloWorld.vue";
 defineProps({
   msg: String,
 });
+let dom = ref(null);
 function click() {
+  console.log(dom.value);
+  console.log(h(HelloWorld, { msg: "home value" }));
+  console.log(h(app, { value: "home value" }));
   test();
   alert("test click");
 }
 </script>
 
 <template>
-  <div class="a">from remote center</div>
+  <div class="a"  >from remote center</div>
+  <HelloWorld msg="home value" ref="dom"></HelloWorld>
 
   <app value="home value" @firstClick="click"></app>
 </template>

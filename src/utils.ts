@@ -280,26 +280,6 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
     }
   }
   outputJSONSync(resolve(__dirname, "../tsconfig.federation.json"), tsconfig);
-  // let tsconfigPath = path.join(process.cwd(), "tsconfig.json");
-  // if (fs.existsSync(tsconfigPath)) {
-  //   let tsconfig = readJsonSync(tsconfigPath);
-  //   JSON.parse(fs.readFileSync(tsconfigPath).toString());
-  //   if (!tsconfig.compilerOptions.paths) {
-  //     tsconfig.compilerOptions.paths = {};
-  //   }
-  //   for (let i in modulePathMap) {
-  //     tsconfig.compilerOptions.paths[`!${project}/${i}`] = [
-  //       "./" +
-  //         path
-  //           .join(
-  //             `node_modules/vite-federation/types/${project}`,
-  //             modulePathMap[i]
-  //           )
-  //           .replace(/\\/g, "/"),
-  //     ];
-  //   }
-  //   outputJSONSync(tsconfigPath, tsconfig);
-  // }
 }
 
 export async function updateTypesFile(
@@ -350,11 +330,3 @@ export function log(msg: string, color: keyof Color = "green") {
   console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
 
-// export function vueExtension(id: string) {
-//   let ext = id.split(".");
-//   if (ext[1] === "vue")
-//     return `
-//   export * from "${ext[0]}"
-//   import "${ext[0]}.css"
-//   `;
-// }

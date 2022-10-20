@@ -1,7 +1,9 @@
 export interface externals {
   [key: string]: string;
 }
-
+interface remoteVueconfig {
+  delScoped: boolean;
+}
 export interface remoteConfig {
   outDir?: string;
   entry?: string;
@@ -14,7 +16,8 @@ export interface remoteConfig {
     homePort: string;
   };
   cssSplit?: boolean;
-  meta?: Metadata | any;
+  vue?: remoteVueconfig;
+  meta?: Metadata | any; //no work
 }
 
 type Metadata = {
@@ -22,16 +25,19 @@ type Metadata = {
   author?: string;
 };
 
+interface homeVueconfig {
+  resolve: boolean;
+}
 export interface homeConfig {
   externals?: externals;
   version?: number;
   remote: externals;
   mode: "hot" | "cold";
-  initFileList: string[];
   cache: boolean;
   importMap: boolean;
   types?: boolean;
   info?: boolean;
+  vue?: homeVueconfig;
 }
 
 export type remoteListType = {

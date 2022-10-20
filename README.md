@@ -2,7 +2,6 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-
 A module federation scheme based on VITE implementation, inspired by Webpack5 federation. Supports ESM format only.
 
 ###### Features
@@ -14,10 +13,9 @@ A module federation scheme based on VITE implementation, inspired by Webpack5 fe
 - 🪐 can handle split CSS correctly,provide type support
 - 🦾 can use cache or hot update
 - 🌈 can be used in a variety of micro front-end/multi-module solutions
-- 😃 Easy access to service registry, fit for engineering scheme
+- 😃 Supports vue, but not just vue
 
 <br>
-P.S. I only tested the VUE project
 Webpack Module federation is currently not compatible ，If you insist on using it,<a href="https://github.com/originjs/vite-plugin-federation">vite-plugin-federation</a> may be helpful
 <br>
 
@@ -42,11 +40,12 @@ Add the plugin to the base project and use it normally
 
 In the remote module, the following two files need to be added
 
+# remote
+
 ```ts
 //in micro.js(you can change it)
-let App = import("./src/App.vue");
-// The name must be the same as the file name
-export { App };
+let app = import("./src/App.vue");
+export { app };
 ```
 
 ```ts
@@ -63,12 +62,18 @@ export default defineConfig({
         //Shared packages. If you want a VUE project, you must have a VUE in it. If you want to test only locally, you can use a UUID
         vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js", //cdn url
       },
+      HMR: {
+        projectName: "app",
+        homePort: "http://localhost:3000",
+      },
+      cssSplit: true,
+      importMap: true, //This configuration must be the same in the home and remote modules
     }),
   ],
 });
 ```
 
-in base module
+# home
 
 ```ts
 //in vite.config.ts
@@ -80,22 +85,26 @@ export default defineConfig({
     vue(),
     homePlugin({
       externals: {
-        vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",//be the same with remoteModule
+        vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js", //be the same with remoteModule
       },
       remote: {
         app: "http://127.0.0.1:8080",
       },
-      cache:true//Set this parameter to false if you want to synchronize the remote module observations
-      mode: "hot",//If it is "hot", then the production environment will pack the same effect as the module federation, otherwise("cold") it will be the same as a normal project
-      importMap:true,
-      cssSplit: [],
+      cache: false,
+      mode: "hot", //If it is "hot", then the production environment will pack the same effect as the module federation, otherwise("cold") it will be the same as a normal project
+      importMap: true,
     }),
   ],
 });
-
 ```
 
-If the remote project's CSS is split:
+```ts
+import test1 from "@app/app"; // import App.js, depending on how it export in micro.js
+import test1 from "@app/App.js"; //import App.js
+import "@app/App.css"; //import App.css
+```
+
+If import a remote vue component(includes css) and cssSplit option is true
 
 ```ts
 //in any .vue/jsx/tsx/ts/js files
@@ -103,20 +112,26 @@ import test1 from "@app/App";
 import "@app/App.css";
 ```
 
-By adding "app" to cssSplit, the CSS problem can be ignored, like this:
+or
 
 ```ts
-//in any .vue/jsx/tsx/ts/js files
-import test1 from "@app/App";
+import test1 from "@app/App.vue";
 ```
 
-If the object is not a component but a pure JS module, it will show that the module is not found, but it won't break anything
-
-If you are using the CSS as a whole, you need to import it manually at the entry point
-Like this:
+If the css does not exist,it won't break anything
 
 ```ts
 import "@app/style.css";
+```
+
+## run example
+
+```shell
+yarn build
+yarn build:remote//remote
+http-server --cors//remote/remote
+yarn dev //home
+
 ```
 
 ## dynamic import
@@ -131,7 +146,7 @@ const test = import(/* @vite-ignore */ "http//localhost:8000/App.js");
 
 ## HMR
 
-If you want to debug both the remote module and the base module, you need to change the HMR config in the remote module, as shown in Example
+If you want to debug both the remote module and the home module, you need to change the HMR config in the remote module, as shown in Example
 
 ## importMap
 
@@ -139,13 +154,11 @@ Since it is inherently ESM dependent, it is necessary to ensure that the same de
 
 If you feel that ImportMap is not compatible, consider this repository <a href="https://github.com/guybedford/es-module-shims">es-module-shims</a>
 
-## typescript
+## typescript support
 
-There should be a built-in ability to generate types, but I haven't done that yet. To generate types, you have to rely on other plugins, but this mode may have some problems (e.g. hot update timing, file overwriting conflicts in Watch mode, etc.) due to the difficulty of transferring information between plugins.
-
-Separate the types files to the types folder in the remote folder (standard). The current implementation is to download all the files under remote/types at startup,rewrite tsconfig.json (this can be a big performance issue, consider turning them off at the second startup). Provides a little hot update capability through delayed operation.
-
-For more detail, see Example
+For more detail, see Example,
+(when the remote module is bundling in watch mode, refreshing in the process of generating the dts will cause a crash
+)
 
 ## structure
 

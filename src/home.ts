@@ -107,6 +107,10 @@ async function getTypes(url: string, project: string) {
 
 export default function HomePlugin(config: homeConfig): any {
   let compList: any = {};
+  let vueConfig = {
+    resolve: true,
+    ...config.vue,
+  };
   // 返回的是插件对象
   return {
     name: "federation-h",
@@ -330,7 +334,7 @@ export default function HomePlugin(config: homeConfig): any {
         /src(.*)\.(vue|js|ts|jsx|tsx)$/.test(id) &&
         !/node_modules\//.test(id)
       ) {
-        code = vueExtension(code);
+        if (vueConfig.resolve) code = vueExtension(code);
         if (!config.cache && mode !== "build") {
           code = replaceHMRImportDeclarations(code, HMRMap);
         }

@@ -32,6 +32,10 @@ let metaData: any;
 export default function remotePart(config: remoteConfig): any {
   metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
+  let vueConfig = {
+    delScoped: true,
+    ...config.vue,
+  };
   // 返回的是插件对象
   return {
     name: "federation-r",
@@ -148,7 +152,7 @@ export default function remotePart(config: remoteConfig): any {
     },
 
     transform(code: string, id: string) {
-      if (/.vue$/.test(id)) {
+      if (/.vue$/.test(id) && vueConfig.delScoped) {
         log(` (.vue) remove scoped style --${id}`);
         cancelScoped(code);
       }
