@@ -169,7 +169,7 @@ export default function HomePlugin(config: homeConfig): any {
           }
         } catch (e) {
           log(`can't find remote module (${i}) -- ${config.remote[i]}`, "red");
-          process.exit(1);
+          // process.exit(1);
         }
       }
 
@@ -177,7 +177,6 @@ export default function HomePlugin(config: homeConfig): any {
         //auto import remote config
         config.externals = ext;
         log(`FINAL EXTERNALS :`);
-        console.log(ext);
       }
 
       for (let i in config.externals) {
@@ -225,12 +224,16 @@ export default function HomePlugin(config: homeConfig): any {
         let source = id.match(FEDERATION_RE) as string[];
         let projectName = source[1];
         let moduleName = source[2];
-        for (let i of remoteList[projectName]) {
-          if (i.name === moduleName) {
-            moduleName = i.url.replace("./", "");
-            break;
+
+        if (remoteList[projectName]) {
+          for (let i of remoteList[projectName]) {
+            if (i.name === moduleName) {
+              moduleName = i.url.replace("./", "");
+              break;
+            }
           }
         }
+
         if (!config.cache) return VIRTUAL_PREFIX + id;
         if (remoteCache[projectName][normalizeFileName(moduleName)]) {
           return VIRTUAL_PREFIX + id;
@@ -263,10 +266,14 @@ export default function HomePlugin(config: homeConfig): any {
           let source = id.match(FEDERATION_RE) as string[];
           let projectName = source[1];
           let moduleName = source[2];
-          for (let i of remoteList[projectName]) {
-            if (i.name === moduleName) {
-              moduleName = i.url.replace("./", "");
-              break;
+
+          //alias
+          if (remoteList[projectName]) {
+            for (let i of remoteList[projectName]) {
+              if (i.name === moduleName) {
+                moduleName = i.url.replace("./", "");
+                break;
+              }
             }
           }
 
