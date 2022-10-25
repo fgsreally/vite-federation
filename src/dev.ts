@@ -29,7 +29,6 @@ export function devPlugin(
                         /\s([^\s]*)\s=\simport\("(.*)"\)/g,
                         (_: string, name: string, url: string) => {
                             alias.push({ find: `!${i}/${name}`, replacement: URL.resolve((config.remote as any)[i], url) })
-                            console.log({ find: `!${i}/${name}`, replacement: URL.resolve((config.remote as any)[i], url) })
                             return "";
                         }
                     )
