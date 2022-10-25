@@ -48,3 +48,14 @@ export type remoteListType = {
 };
 
 export type ModulePathMap = { [key in string]: string };
+
+interface Options {
+  include?: string | RegExp | (string | RegExp)[];
+  exclude?: string | RegExp | (string | RegExp)[];
+}
+
+export type devConfig = {
+  externals: { [key in string]: string },
+  remote?: { [key in string]: string },
+  opts?: Options
+}

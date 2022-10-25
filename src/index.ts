@@ -4,3 +4,4 @@ import homePlugin from "./home";
 export { remotePlugin, homePlugin };
 export { vueDev } from "./helper/helper";
 export { traverseDic } from "./utils";
+export * from "./dev"

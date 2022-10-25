@@ -4,7 +4,7 @@ export const tsup: Options = {
   entry: ["src/index.ts", "src/helper/index.ts"],
   format: ["cjs", "esm"],
   dts: true,
-  splitting: true,
+  splitting: false,
   clean: true,
   shims: false,
 };

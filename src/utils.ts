@@ -98,6 +98,8 @@ export function ImportExpression(source: string) {
       return "";
     }
   );
+
+
   return ret;
 }
 export function replaceHMRImportDeclarations(
@@ -159,22 +161,6 @@ export function replaceHotImportDeclarations(source: any, config: homeConfig) {
   }
   return newSource.toString();
 }
-// export function replaceBundleImportDeclarations(
-//   source: any,
-//   externals: { [x: string]: any; vue?: string }
-// ) {
-//   const [imports] = parse(source, "optional-sourcename");
-//   let newSource = source;
-//   for (let i of imports) {
-//     for (let j in externals) {
-//       if (i.n === j) {
-//         newSource = newSource.replace(i.n, externals[j]);
-//         break;
-//       }
-//     }
-//   }
-//   return newSource;
-// }
 
 export function replaceBundleImportDeclarations(
   source: string,
@@ -274,9 +260,11 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
   for (let i in modulePathMap) {
     let jsPath =
       "./" + join(`./types/${project}`, modulePathMap[i]).replace(/\\/g, "/");
-    tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
     if (modulePathMap[i].endsWith(".vue")) {
-      tsconfig.compilerOptions.paths[`!${project}/${i}.vue`] = [jsPath];
+      tsconfig.compilerOptions.paths[`!${project}/${i}{,.vue}`] = [jsPath];
+    } else {
+      tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
+
     }
   }
   outputJSONSync(resolve(__dirname, "../tsconfig.federation.json"), tsconfig);
@@ -292,7 +280,7 @@ export async function updateTypesFile(
     let p = path.resolve(TYPES_CACHE, project, filePath);
     outputFileSync(p, data);
     log(`update types file --${p}`, "blue");
-  } catch (e) {}
+  } catch (e) { }
 }
 export async function downloadTSFiles(url: string, project: string) {
   let { data } = await axios.get(url);
@@ -330,3 +318,13 @@ export function log(msg: string, color: keyof Color = "green") {
   console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
 
+export function replaceEntryFile(code: string, source: string) {//work for vite^3
+
+  const [i1] = parse(source, "optional-sourcename");
+  const [i2] = parse(code, "optional-sourcename");
+  let newSource = new MagicString(source);
+  i1.forEach((item, i) => {
+    newSource.overwrite(item.s, item.e, `"${i2[i].n}"`)
+  })
+  return newSource.toString();
+}

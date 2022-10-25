@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Example from "./components/example.vue";
+// import Example from "!app/hello";
 import { provide, ref } from "vue";
 </script>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // import "!app/App.css";
-import app from "!app/App";
+import app from "!app/hello.vue";
 import { h, ref } from "vue";
 import { test } from "!app/test";
 import HelloWorld from "./HelloWorld.vue";
@@ -9,9 +9,6 @@ defineProps({
 });
 let dom = ref(null);
 function click() {
-  console.log(dom.value);
-  console.log(h(HelloWorld, { msg: "home value" }));
-  console.log(h(app, { value: "home value" }));
   test();
   alert("test click");
 }
@@ -21,7 +18,7 @@ function click() {
   <div class="a">from remote center</div>
   <HelloWorld msg="home value" ref="dom"></HelloWorld>
 
-  <app value="home value" @firstClick="click"></app>
+  <app  @firstClick="click" msg="msg from home "></app>
 </template>
 
 <style scoped>

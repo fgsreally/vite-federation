@@ -1,7 +1,7 @@
 import fs from "fs";
 import colors from "colors";
 import axios from "axios";
-import { extname, relative } from "path";
+import { basename, extname, relative } from "path";
 import URL from "url";
 import { init } from "es-module-lexer";
 import { externals, homeConfig, remoteListType } from "./types";
@@ -227,8 +227,8 @@ export default function HomePlugin(config: homeConfig): any {
 
         if (remoteList[projectName]) {
           for (let i of remoteList[projectName]) {
-            if (i.name === moduleName) {
-              moduleName = i.url.replace("./", "");
+            if (i.name === moduleName.split(".")[0]) {
+              moduleName = basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
               break;
             }
           }
@@ -246,8 +246,7 @@ export default function HomePlugin(config: homeConfig): any {
             return VIRTUAL_PREFIX + id;
           } catch (e) {
             log(
-              `Request module was not found, returns an empty module--${
-                config.remote[projectName]
+              `Request module was not found, returns an empty module--${config.remote[projectName]
               }/${normalizeFileName(moduleName)} `,
               "grey"
             );
@@ -270,8 +269,8 @@ export default function HomePlugin(config: homeConfig): any {
           //alias
           if (remoteList[projectName]) {
             for (let i of remoteList[projectName]) {
-              if (i.name === moduleName) {
-                moduleName = i.url.replace("./", "");
+              if (i.name === moduleName.split(".")[0]) {
+                moduleName =  basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
                 break;
               }
             }
@@ -290,8 +289,7 @@ export default function HomePlugin(config: homeConfig): any {
               // );
             } catch (e) {
               log(
-                `Request module was not found, returns an empty module--${
-                  config.remote[projectName]
+                `Request module was not found, returns an empty module--${config.remote[projectName]
                 }/${normalizeFileName(moduleName)}`,
                 "grey"
               );
@@ -325,6 +323,7 @@ export default function HomePlugin(config: homeConfig): any {
           );
         }
       }
+
     },
 
     transform(code: any, id: string) {
