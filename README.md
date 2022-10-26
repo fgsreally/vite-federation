@@ -180,3 +180,12 @@ For more detail, see Example,
     |-- remote.config.ts(federation config)
     |-- vite.config.ts (normal config)
     |-- package.json
+
+## bug
+
+when start devserver in home project,it may cause an error in "vite:dep-scan",which won't effect anything(v0.0.9|vite^3)
+
+
+## dev
+
+ you can directly use vite dev in remote project, which requires the devplugin to be used on both remote and home, but this is only preview for now and does not support packaging

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // import "!app/App.css";
-import app from "!app/hello.vue";
+import app from "!app/app.vue";
 import { h, ref } from "vue";
 import { test } from "!app/test";
 import HelloWorld from "./HelloWorld.vue";
@@ -18,7 +18,7 @@ function click() {
   <div class="a">from remote center</div>
   <HelloWorld msg="home value" ref="dom"></HelloWorld>
 
-  <app  @firstClick="click" msg="msg from home "></app>
+  <app  @firstClick="click" value="msg from home "></app>
 </template>
 
 <style scoped>

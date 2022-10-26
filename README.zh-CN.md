@@ -1,6 +1,6 @@
 # vite-federation
 
-v0.0.6
+v0.0.9
 
 **中文** | [English](./README.md)
 
@@ -224,3 +224,12 @@ homePlugin({
     |-- remote.config.ts(federation 配置)
     |-- vite.config.ts (正常配置)
     |-- package.json
+
+
+## bug
+启动服务时，可能导致vite内部插件(vite:dep-scan)报错，但仍可正常运行，不影响(v0.0.9|vite^3)
+
+
+## dev mode 
+
+如果觉得在remote端打包繁琐，可以直接vite dev,需要在remote端和home端同时使用devplugin，但这暂时只能预览，不支持打包

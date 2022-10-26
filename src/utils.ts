@@ -1,17 +1,19 @@
 import axios from "axios";
-import path, { dirname, join, resolve } from "path";
+import path, { join, resolve } from "path";
 import URL from "url";
 import { ImportSpecifier, parse } from "es-module-lexer";
-import { homeConfig, externals, remoteListType, ModulePathMap } from "./types";
+import { homeConfig, externals, ModulePathMap } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
-import { outputFileSync, outputJSONSync } from "fs-extra";
+import { outputFileSync, outputJSONSync, readJSONSync } from "fs-extra";
 import MagicString from "magic-string";
+import { minVersion } from "semver"
 
 export const FEDERATION_RE = /\!(.*)\/([^?]*)/;
 export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
 export const VIRTUAL_EMPTY = "/@virtual:EmptyModule";
 export const VIRTUAL_HMR_PREFIX = "VIRTUAL-HMR";
+export const ESM_SH_URL = "https://esm.sh/"
 export const TYPES_CACHE = path.resolve(__dirname, "../", "types");
 const HMT_TYPES_TIMEOUT = 5000;
 
@@ -327,4 +329,14 @@ export function replaceEntryFile(code: string, source: string) {//work for vite^
     newSource.overwrite(item.s, item.e, `"${i2[i].n}"`)
   })
   return newSource.toString();
+}
+
+export function auto(imports?: string[]) {//work for esm.sh
+  const { dependencies } = readJSONSync(resolve(process.cwd(), "package.json"))
+  let externals: externals = {}
+  for (let i in dependencies) {
+    if (!imports || imports.includes(i))
+      externals[i] = `${ESM_SH_URL}${i}@${minVersion(dependencies[i])}`
+  }
+  return externals
 }

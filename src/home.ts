@@ -42,7 +42,7 @@ import {
 } from "./utils";
 import { IncomingMessage } from "http";
 let HMRMap: Map<string, number> = new Map();
-let mode = "build";
+let command = "build";
 const remoteCache: any = {};
 let server: ViteDevServer;
 let remoteList: remoteListType = {};
@@ -115,10 +115,13 @@ export default function HomePlugin(config: homeConfig): any {
   return {
     name: "federation-h",
     // 初始化hooks，只走一次
-    async options(opts: InputOptions) {
+    configResolved(resolvedConfig: ResolvedConfig) {
       log(`--vite-federation is running--`);
-      //补充external,也可以在rollupOption中弄
-      if (!opts.external) opts.external = [];
+
+      command = resolvedConfig.command;
+    },
+
+    async options(opts: InputOptions) {
 
       let ext: externals = {};
       await init;
@@ -178,16 +181,15 @@ export default function HomePlugin(config: homeConfig): any {
         config.externals = ext;
         log(`FINAL EXTERNALS :`);
       }
-
+      //补充external,也可以在rollupOption中弄
+      if (!opts.external) opts.external = [];
       for (let i in config.externals) {
         if (!(opts.external as string[]).includes(i)) {
           (opts.external as string[]).push(i);
         }
       }
     },
-    configResolved(resolvedConfig: ResolvedConfig) {
-      mode = resolvedConfig.command;
-    },
+
 
     configureServer(_server: ViteDevServer) {
       server = _server;
@@ -215,6 +217,7 @@ export default function HomePlugin(config: homeConfig): any {
       });
     },
     async resolveId(id: string, i: string) {
+
       // /^\!(.*)\/(.*)$/
       if (i.startsWith(VIRTUAL_PREFIX)) {
         return URL.resolve(i, id);
@@ -257,6 +260,7 @@ export default function HomePlugin(config: homeConfig): any {
       }
     },
     async load(id: string) {
+
       if (id === VIRTUAL_EMPTY) return "";
       if (id.startsWith(VIRTUAL_PREFIX)) {
         // let source = id.match(/^\0\@(.*)\/(.*)$/);
@@ -270,7 +274,7 @@ export default function HomePlugin(config: homeConfig): any {
           if (remoteList[projectName]) {
             for (let i of remoteList[projectName]) {
               if (i.name === moduleName.split(".")[0]) {
-                moduleName =  basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
+                moduleName = basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
                 break;
               }
             }
@@ -327,11 +331,12 @@ export default function HomePlugin(config: homeConfig): any {
     },
 
     transform(code: any, id: string) {
+
       if (
         id.startsWith(VIRTUAL_PREFIX) &&
         !id.endsWith(".css") &&
         !config.importMap &&
-        mode !== "build"
+        command !== "build"
       ) {
         code = replaceImportDeclarations(code, config.externals as externals);
         return code;
@@ -341,18 +346,18 @@ export default function HomePlugin(config: homeConfig): any {
         !/node_modules\//.test(id)
       ) {
         if (vueConfig.resolve) code = vueExtension(code);
-        if (!config.cache && mode !== "build") {
+        if (!config.cache && command !== "build") {
           code = replaceHMRImportDeclarations(code, HMRMap);
         }
 
-        if (config.mode === "hot" && mode === "build") {
+        if (config.mode === "hot" && command === "build") {
           code = replaceHotImportDeclarations(code, config);
         }
         return code;
       }
     },
     transformIndexHtml(html: string) {
-      if (config.importMap && mode === "build") {
+      if (config.importMap && command === "build") {
         return html.replace(
           /<title>(.*?)<\/title>/,
           (_: string, js: string) => {

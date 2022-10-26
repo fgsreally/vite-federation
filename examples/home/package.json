@@ -3,13 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "dev:dynamic": "vite --mode dynamic",
+    "dev:static": "vite --mode static",
+    "build:hot": "vite build --mode hot",
+    "build:cold": " vite build --mode cold",
     "preview": "vite preview"
   },
   "dependencies": {
     "element-plus": "^2.2.2",
-    "vite-federation": "workspace:^0.0.7",
+    "vite-federation": "workspace:^0.0.9",
     "vue": "^3.2.25"
   },
   "devDependencies": {

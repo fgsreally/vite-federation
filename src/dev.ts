@@ -4,6 +4,7 @@ import { createFilter } from "vite";
 import { init, parse } from "es-module-lexer";
 import MagicString from "magic-string";
 import { devConfig } from "./types"
+import { normalizeFileName } from './utils';
 
 export function devPlugin(
     config: devConfig
@@ -12,9 +13,11 @@ export function devPlugin(
     const filter = createFilter(include, exclude);
 
     return {
-        name: "vite-plugin-viewEngine",
+        name: "federation-dev",
         enforce: "post",
+        apply: "serve",
         async config(cf: any) {
+            await init;
             if (config.remote) {
 
                 let alias: any = cf.resolve?.alias || []
@@ -25,15 +28,19 @@ export function devPlugin(
                 }
                 for (let i in config.remote) {
                     let { data: source } = await axios.get(config.remote[i])
+
+                    // alias.push({find:/\!/,replacement:})
                     source.replace(
                         /\s([^\s]*)\s=\simport\("(.*)"\)/g,
                         (_: string, name: string, url: string) => {
-                            alias.push({ find: `!${i}/${name}`, replacement: URL.resolve((config.remote as any)[i], url) })
+                            let RE = new RegExp(`\!${i}/${name}\.?(.*)`)
+                            alias.push({ find: RE, replacement: URL.resolve((config.remote as any)[i], url) })
                             return "";
                         }
                     )
+                    let RE = new RegExp(`\!${i}/(.*)`)
+                    alias.push({ find: RE, replacement: (p: string) => URL.resolve((config.remote as any)[i], normalizeFileName(p)) })
                 }
-
 
                 if (!cf.resolve) cf.resolve = {}
                 cf.resolve.alias = alias
@@ -43,10 +50,6 @@ export function devPlugin(
 
         },
 
-        async options() {
-            await init;
-
-        },
         transform(code: string, id: string) {
             if (!id.includes("node_modules") && filter(id)) {
                 let newSource = new MagicString(code);
@@ -60,6 +63,7 @@ export function devPlugin(
                         }
                     }
                 }
+
 
                 return newSource.toString();
             }
