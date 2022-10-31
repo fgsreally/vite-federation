@@ -9,7 +9,6 @@ import type {
   PluginContext,
   OutputBundle,
   OutputChunk,
-  InputOptions,
   RollupOptions,
   OutputOptions,
 } from "rollup";
@@ -21,6 +20,7 @@ import {
   sendHMRInfo,
   log,
   replaceEntryFile,
+  ImportExpression,
 } from "./utils";
 
 interface HMRInfo {
@@ -32,6 +32,8 @@ let HMRconfig: HMRInfo = {
   cssFiles: {},
 };
 let metaData: any;
+
+let alias: { name: string, url: string }[]
 export default function remotePart(config: remoteConfig): any {
   metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
@@ -39,7 +41,6 @@ export default function remotePart(config: remoteConfig): any {
     delScoped: true,
     ...config.vue,
   };
-  let mode = 'build'
   // 返回的是插件对象
   return {
     name: "federation-r",
@@ -151,7 +152,8 @@ export default function remotePart(config: remoteConfig): any {
       }
     },
     generateBundle(p: PluginContext, data: OutputBundle) {
-      (data["remoteEntry.js"] as OutputChunk).code = replaceEntryFile((data["remoteEntry.js"] as OutputChunk).code, fs.readFileSync(resolve(process.cwd(), entryFile)).toString())
+      let code = (data["remoteEntry.js"] as OutputChunk).code = replaceEntryFile((data["remoteEntry.js"] as OutputChunk).code, fs.readFileSync(resolve(process.cwd(), entryFile)).toString());
+      alias = ImportExpression(code)
 
       if (config.importMap) return;
       for (let i in data) {
@@ -181,6 +183,7 @@ export default function remotePart(config: remoteConfig): any {
         log(`write asset list--${p}`, "green");
         metaData.files = files;
         metaData.config = config;
+        metaData.alias = alias
         fs.writeFileSync(p, JSON.stringify(metaData));
       });
     },

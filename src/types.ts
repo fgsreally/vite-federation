@@ -17,7 +17,7 @@ export interface remoteConfig {
   };
   cssSplit?: boolean;
   vue?: remoteVueconfig;
-  meta?: Metadata | any; //no work
+  meta?: Metadata | any; 
 }
 
 type Metadata = {

@@ -21,7 +21,6 @@ import type {
 } from "rollup";
 
 import {
-  ImportExpression,
   getAbsolutePath,
   normalizeFileName,
   getFileName,
@@ -122,7 +121,6 @@ export default function HomePlugin(config: homeConfig): any {
     },
 
     async options(opts: InputOptions) {
-
       let ext: externals = {};
       await init;
       for (let i in config.remote) {
@@ -133,32 +131,32 @@ export default function HomePlugin(config: homeConfig): any {
           //向远程请求清单
           compList[i] = [];
           remoteCache[i] = {};
-          let { data: entryRet } = await axios.get(
-            config.remote[i] + "/remoteEntry.js"
-          );
-          let { data: assetInfo } = await axios.get(
+          // let { data: entryRet } = await axios.get(
+          //   config.remote[i] + "/remoteEntry.js"
+          // );
+          let { data: remoteInfo } = await axios.get(
             config.remote[i] + "/remoteList.json"
           );
-          let entryList = ImportExpression(entryRet);
+          // let entryList = ImportExpression(entryRet);
 
-          ext = { ...ext, ...assetInfo.config.externals };
+          ext = { ...ext, ...remoteInfo.config.externals };
+          if (command !== 'build') {
+            log(`REMOTE MODULE (${i}) MAP:`);
+            console.table(remoteInfo.alias);
 
-          log(`REMOTE MODULE (${i}) MAP:`);
-          console.table(entryList);
+            log(`REMOTE MODULE (${i}) ASSET LIST:`);
+            console.table(remoteInfo.files);
 
-          log(`REMOTE MODULE (${i}) ASSET LIST:`);
-          console.table(assetInfo.files);
-
-          if (config.info) {
-            log(`REMOTE MODULE (${i}) CONFIG`);
-            console.log(assetInfo);
+            if (config.info) {
+              log(`REMOTE MODULE (${i}) CONFIG`);
+              console.log(remoteInfo);
+            }
           }
-
-          remoteList[i] = entryList;
+          remoteList[i] = remoteInfo.alias;
 
           if (!config.cache) break;
 
-          for (let j of entryList) {
+          for (let j of remoteList[i]) {
             //请求清单上js文件并缓存
             let url = getAbsolutePath(config.remote[i], j.url);
 
@@ -176,10 +174,11 @@ export default function HomePlugin(config: homeConfig): any {
         }
       }
 
-      if (!config.externals) {
+      if (!config.externals && command !== "build") {
         //auto import remote config
         config.externals = ext;
         log(`FINAL EXTERNALS :`);
+        console.table(config.externals)
       }
       //补充external,也可以在rollupOption中弄
       if (!opts.external) opts.external = [];
@@ -189,7 +188,6 @@ export default function HomePlugin(config: homeConfig): any {
         }
       }
     },
-
 
     configureServer(_server: ViteDevServer) {
       server = _server;
@@ -217,7 +215,6 @@ export default function HomePlugin(config: homeConfig): any {
       });
     },
     async resolveId(id: string, i: string) {
-
       // /^\!(.*)\/(.*)$/
       if (i.startsWith(VIRTUAL_PREFIX)) {
         return URL.resolve(i, id);
@@ -231,7 +228,11 @@ export default function HomePlugin(config: homeConfig): any {
         if (remoteList[projectName]) {
           for (let i of remoteList[projectName]) {
             if (i.name === moduleName.split(".")[0]) {
-              moduleName = basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
+              moduleName =
+                basename(i.url, ".js") +
+                (moduleName.split(".")[1]
+                  ? "." + moduleName.split(".")[1]
+                  : "");
               break;
             }
           }
@@ -260,7 +261,6 @@ export default function HomePlugin(config: homeConfig): any {
       }
     },
     async load(id: string) {
-
       if (id === VIRTUAL_EMPTY) return "";
       if (id.startsWith(VIRTUAL_PREFIX)) {
         // let source = id.match(/^\0\@(.*)\/(.*)$/);
@@ -274,7 +274,11 @@ export default function HomePlugin(config: homeConfig): any {
           if (remoteList[projectName]) {
             for (let i of remoteList[projectName]) {
               if (i.name === moduleName.split(".")[0]) {
-                moduleName = basename(i.url, ".js") + (moduleName.split(".")[1] ? "." + moduleName.split(".")[1] : "");
+                moduleName =
+                  basename(i.url, ".js") +
+                  (moduleName.split(".")[1]
+                    ? "." + moduleName.split(".")[1]
+                    : "");
                 break;
               }
             }
@@ -327,11 +331,9 @@ export default function HomePlugin(config: homeConfig): any {
           );
         }
       }
-
     },
 
     transform(code: any, id: string) {
-
       if (
         id.startsWith(VIRTUAL_PREFIX) &&
         !id.endsWith(".css") &&
@@ -358,46 +360,39 @@ export default function HomePlugin(config: homeConfig): any {
     },
     transformIndexHtml(html: string) {
       if (config.importMap && command === "build") {
-        return html.replace(
-          /<title>(.*?)<\/title>/,
-          (_: string, js: string) => {
-            return (
-              _ +
-              `\n<script type="importmap">
+        return {
+          html,
+          tags: [
+            {//polyfill
+              tag: "script",
+              attrs: { async: true, src: "https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js" },
+              injectTo: "head-prepend",
+            },
             {
-              "imports":${JSON.stringify(config.externals)}
-            }
-            </script>`
-            );
-          }
-        );
+              tag: "script",
+              attrs: {
+                type: "importmap",//systemjs-importmap
+              },
+              children: `{"imports":${JSON.stringify(config.externals)}}`,
+              injectTo: "head-prepend",
+            },
+          ],
+        };
+        // return html.replace(
+        //   /<title>(.*?)<\/title>/,
+        //   (_: string, js: string) => {
+        //     return (
+        //       _ +
+        //       `\n<script type="importmap">
+        //     {
+        //       "imports":${JSON.stringify(config.externals)}
+        //     }
+        //     </script>`
+        //     );
+        //   }
+        // );
       }
     },
   };
 }
 
-// if (
-//   /src(.*)\.(vue|js|ts|jsx|tsx)$/.test(id) &&
-//   !/node_modules\//.test(id)
-// ) {
-//   if (/\.vue$/.test(id)) {
-//     code = code.replace(
-//       /(<script.*?>)(.*)<\/script>/gim,
-//       function (_: string, p1: string, p2: string) {
-//         let ret = "";
-//         if (Array.isArray(config.cssSplit)) ret = addSplitCss(p2, config);
-//         if (config.mode === "hot" && mode === "build") {
-//           code = replaceHotImportDeclarations(ret, config);
-//         }
-//         return `${p1}${ret}</script>`;
-//       }
-//     );
-//   } else {
-//     if (Array.isArray(config.cssSplit)) code = addSplitCss(code, config);
-//     if (config.mode === "hot" && mode === "build") {
-//       code = replaceHotImportDeclarations(code, config);
-//     }
-//   }
-
-//   return code;
-// }

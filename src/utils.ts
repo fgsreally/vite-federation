@@ -325,6 +325,7 @@ export function replaceEntryFile(code: string, source: string) {//work for vite^
   const [i1] = parse(source, "optional-sourcename");
   const [i2] = parse(code, "optional-sourcename");
   let newSource = new MagicString(source);
+  
   i1.forEach((item, i) => {
     newSource.overwrite(item.s, item.e, `"${i2[i].n}"`)
   })

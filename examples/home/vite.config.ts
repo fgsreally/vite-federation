@@ -1,6 +1,7 @@
 import { ConfigEnv, defineConfig, UserConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { devPlugin, homePlugin, auto } from "vite-federation";
+import legacy from '@vitejs/plugin-legacy'
 
 export default ({ mode }: ConfigEnv): UserConfig => {
 
@@ -23,7 +24,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
         },
         mode: mode,
         cache: false,
-        importMap: false,
+        importMap: true,
         types: false,
         info: false,
       });
@@ -32,6 +33,6 @@ export default ({ mode }: ConfigEnv): UserConfig => {
     server: {
       port: 4100,
     },
-    plugins: [vue(), plugin],
+    plugins: [vue(), plugin, legacy()],
   };
 };

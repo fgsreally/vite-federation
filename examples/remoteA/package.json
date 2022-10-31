@@ -1,18 +1,18 @@
 {
-  "name": "federation-home",
+  "name": "federation-remote",
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev:dynamic": "vite --mode dynamic",
-    "dev:static": "vite --mode static",
-    "build:hot": "vite build --mode hot",
-    "build:cold": " vite build --mode cold",
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:remote": " vite build -c remote.config.ts -w",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-legacy": "^2.3.0",
     "element-plus": "^2.2.2",
+    "lodash-es": "^4.17.21",
     "vite-federation": "workspace:^0.0.9",
+    "vite-plugin-dts": "^1.4.1",
     "vue": "^3.2.25"
   },
   "devDependencies": {
