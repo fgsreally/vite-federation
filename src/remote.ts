@@ -31,6 +31,7 @@ let HMRconfig: HMRInfo = {
   changeFile: "",
   cssFiles: {},
 };
+let initEntryFiles: string[] = []
 let metaData: any;
 let alias: { name: string, url: string }[]
 export default function remotePart(config: remoteConfig): any {
@@ -38,6 +39,7 @@ export default function remotePart(config: remoteConfig): any {
   let entryFile = config.entry || "micro.js";
   let vueConfig = {
     delScoped: true,
+    addTag: true,
     ...config.vue,
   };
   // 返回的是插件对象
@@ -96,14 +98,11 @@ export default function remotePart(config: remoteConfig): any {
 
     async writeBundle(_: any, module: any) {
       let updateList: string[] = [];
-
       if (HMRconfig.changeFile && config.HMR) {
 
         for (let i in module) {
           if (
-            i.endsWith(".css") //&&
-
-            // module[i].source.length !== HMRconfig.cssFiles[i]
+            i.endsWith(".css")
           ) {
             let cssHash = contentHash.encode("onion", module[i].source);
             if (cssHash !== HMRconfig.cssFiles[i]) {
@@ -166,12 +165,15 @@ export default function remotePart(config: remoteConfig): any {
     },
 
     resolveId(id: string, i: string) {
-      if (i === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) { log(`Remote Entry File --${id}`); }
+      if (i === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
+        log(`Remote Entry File --${id}`);
+        initEntryFiles.push(basename(id))
+      }
     },
     transform(code: string, id: string) {
 
       if (!id.includes("node_modules")) {
-        if (/\.vue$/.test(id)) {
+        if (/\.vue$/.test(id) && vueConfig.addTag) {
           log(`Add ProjectID & FileID For VUE Component --${id}`);
           return code + `\n<federation>export default (block)=>{block.projectID="${config.project || 'federation-r'}";block.fileID="${basename(id)}";}</federation>`
           // log(` (.vue) remove scoped style --${id}`);
@@ -192,6 +194,7 @@ export default function remotePart(config: remoteConfig): any {
         log(`write asset list--${p}`, "green");
         metaData.files = files;
         metaData.config = config;
+        metaData.initEntryFiles = initEntryFiles;
         metaData.alias = alias
         fs.writeFileSync(p, JSON.stringify(metaData));
       });

@@ -42,7 +42,7 @@
     "watch": "tsup --watch",
     "preview": "vite preview",
     "example:remote": "npm -C examples/remote run build:remote",
-    "example:home": "npm -C examples/home run dev",
+    "example:home": "npm -C examples/home run dev:static",
     "e2e": "cypress open"
   },
   "files": [

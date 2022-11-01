@@ -2,7 +2,8 @@ export interface externals {
   [key: string]: string;
 }
 interface remoteVueconfig {
-  delScoped: boolean;
+  delScoped?: boolean;
+  addTag?: boolean
 }
 export interface remoteConfig {
   outDir?: string;
