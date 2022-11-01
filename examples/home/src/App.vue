@@ -5,7 +5,7 @@ import { provide, ref } from "vue";
 </script>
 
 <template>
-  <Example />
+  <Example msg="msg"/>
 </template>
 
 <style>

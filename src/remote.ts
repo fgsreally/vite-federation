@@ -1,4 +1,4 @@
-import { relative, resolve } from "path";
+import { basename, relative, resolve } from "path";
 import { init } from "es-module-lexer";
 import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
@@ -32,7 +32,6 @@ let HMRconfig: HMRInfo = {
   cssFiles: {},
 };
 let metaData: any;
-
 let alias: { name: string, url: string }[]
 export default function remotePart(config: remoteConfig): any {
   metaData = config.meta || {};
@@ -166,11 +165,21 @@ export default function remotePart(config: remoteConfig): any {
       }
     },
 
+    resolveId(id: string, i: string) {
+      if (i === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) { log(`Remote Entry File --${id}`); }
+    },
     transform(code: string, id: string) {
-      if (/.vue$/.test(id) && vueConfig.delScoped) {
-        log(` (.vue) remove scoped style --${id}`);
-        cancelScoped(code);
+
+      if (!id.includes("node_modules")) {
+        if (/\.vue$/.test(id)) {
+          log(`Add ProjectID & FileID For VUE Component --${id}`);
+          return code + `\n<federation>export default (block)=>{block.projectID="${config.project || 'federation-r'}";block.fileID="${basename(id)}";}</federation>`
+          // log(` (.vue) remove scoped style --${id}`);
+          // cancelScoped(code);
+        }
       }
+
+
     },
     closeBundle() {
       let dir = resolve(process.cwd(), config.outDir || "remote");

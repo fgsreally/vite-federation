@@ -17,6 +17,10 @@ import { ref, inject } from "vue";
 import { ElTree } from "element-plus";
 import HelloWorld from "./components/HelloWorld.vue";
 
+if (process.env.NODE_ENV === "development") {
+  console.log(1);
+}
+
 const props = defineProps({
   value: String,
 });

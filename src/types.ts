@@ -10,6 +10,7 @@ export interface remoteConfig {
   externals: externals;
   version?: number;
   importMap: boolean;
+  project?: string;
   // vendor?: string[];
   HMR?: {
     projectName: string;
@@ -17,7 +18,7 @@ export interface remoteConfig {
   };
   cssSplit?: boolean;
   vue?: remoteVueconfig;
-  meta?: Metadata | any; 
+  meta?: Metadata | any;
 }
 
 type Metadata = {

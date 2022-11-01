@@ -15,10 +15,11 @@ function click() {
 </script>
 
 <template>
+  {{ msg }}
   <div class="a">from remote center</div>
   <HelloWorld msg="home value" ref="dom"></HelloWorld>
 
-  <app  @firstClick="click" value="msg from home "></app>
+  <app @firstClick="click" value="msg from home "></app>
 </template>
 
 <style scoped>

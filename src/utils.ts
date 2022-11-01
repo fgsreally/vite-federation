@@ -317,7 +317,7 @@ export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
 }
 
 export function log(msg: string, color: keyof Color = "green") {
-  console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
+  console.log(colors[color](`\n${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
 
 export function replaceEntryFile(code: string, source: string) {//work for vite^3
