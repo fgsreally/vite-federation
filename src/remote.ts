@@ -3,6 +3,7 @@ import { init } from "es-module-lexer";
 import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
 import fs from "fs";
+import fse from "fs-extra"
 import contentHash from "content-hash";
 
 import type {
@@ -23,6 +24,7 @@ import {
   ImportExpression,
 } from "./utils";
 
+
 interface HMRInfo {
   changeFile: string;
   cssFiles: { [key in string]: number };
@@ -34,6 +36,7 @@ let HMRconfig: HMRInfo = {
 let initEntryFiles: string[] = []
 let metaData: any;
 let alias: { name: string, url: string }[]
+let sourceGraph: { [key: string]: string[] } = {}
 export default function remotePart(config: remoteConfig): any {
   metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
@@ -132,12 +135,12 @@ export default function remotePart(config: remoteConfig): any {
           //   }&${updateList.join("&")}`
           // );
           if (ret) {
-            log("send HMR information to home ");
+            log("Send HMR information to home ");
           } else {
-            log(`fail to send HMR information\n`, "red");
+            log(`Fail to send HMR information\n`, "red");
           }
         } catch (e) {
-          log(`fail to collect HMR information\n${e}`, "red");
+          log(`Fail to collect HMR information\n${e}`, "red");
         }
       } else {
         for (let i in module) {
@@ -153,6 +156,23 @@ export default function remotePart(config: remoteConfig): any {
       let code = (data["remoteEntry.js"] as OutputChunk).code = replaceEntryFile((data["remoteEntry.js"] as OutputChunk).code, fs.readFileSync(resolve(process.cwd(), entryFile)).toString());
       alias = ImportExpression(code)
 
+
+      for (let i in data) {
+        for (let entry of initEntryFiles) {
+
+          if (basename(entry).split(".")[0]+'.js' === i) {
+            Object.keys((data[i] as OutputChunk).modules).forEach(fp => {
+
+              if (fse.existsSync(fp)) {
+                sourceGraph[entry].push(relative(process.cwd(), fp))
+              }
+            })
+          }
+        }
+
+      }
+
+
       if (config.importMap) return;
       for (let i in data) {
         if (/.js$/.test(i)) {
@@ -164,17 +184,20 @@ export default function remotePart(config: remoteConfig): any {
       }
     },
 
-    resolveId(id: string, i: string) {
-      if (i === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
-        log(`Remote Entry File --${id}`);
-        initEntryFiles.push(basename(id))
+    resolveId(id: string, importer: string) {
+      if (importer === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
+        log(`Remote entry file --${id}`);
+        let fileName = relative(process.cwd(), resolve(importer, id))
+        sourceGraph[fileName] = []
+        initEntryFiles.push(fileName)
       }
+
     },
     transform(code: string, id: string) {
 
       if (!id.includes("node_modules")) {
         if (/\.vue$/.test(id) && vueConfig.addTag) {
-          log(`Add ProjectID & FileID For VUE Component --${id}`);
+          log(`Add projectID & fileID for VUE component --${id}`);
           return code + `\n<federation>export default (block)=>{block.projectID="${config.project || 'federation-r'}";block.fileID="${basename(id)}";}</federation>`
           // log(` (.vue) remove scoped style --${id}`);
           // cancelScoped(code);
@@ -183,20 +206,23 @@ export default function remotePart(config: remoteConfig): any {
 
 
     },
+
+
     closeBundle() {
       let dir = resolve(process.cwd(), config.outDir || "remote");
 
       fs.readdir(dir, (err, files) => {
         if (err) {
-          log(`write asset error`, "red");
+          log(`Write asset error`, "red");
         }
         let p = resolve(dir, "remoteList.json");
-        log(`write asset list--${p}`, "green");
+        log(`Write asset list--${p}`, "green");
         metaData.files = files;
         metaData.config = config;
         metaData.initEntryFiles = initEntryFiles;
         metaData.alias = alias
-        fs.writeFileSync(p, JSON.stringify(metaData));
+        metaData.sourceGraph = sourceGraph
+        fse.outputJSON(p, metaData)
       });
     },
   };

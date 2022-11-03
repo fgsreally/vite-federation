@@ -113,6 +113,7 @@ export default function HomePlugin(config: homeConfig): any {
   // 返回的是插件对象
   return {
     name: "federation-h",
+
     // 初始化hooks，只走一次
     configResolved(resolvedConfig: ResolvedConfig) {
       log(`--vite-federation is running--`);
