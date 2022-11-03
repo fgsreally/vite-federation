@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "build:remote": " vite build -c remote.config.ts -w",
+    "build:remote": " vite build -c remote.config.ts ",
     "preview": "vite preview"
   },
   "dependencies": {
