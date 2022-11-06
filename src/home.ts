@@ -125,9 +125,6 @@ export default function HomePlugin(config: homeConfig): any {
       await init;
       for (let i in config.remote) {
         try {
-          if (config.types) {
-            getTypes(config.remote[i] + "/types/types.json", i);
-          }
           //向远程请求清单
           compList[i] = [];
           remoteCache[i] = {};
@@ -137,6 +134,10 @@ export default function HomePlugin(config: homeConfig): any {
           );
 
           ext = { ...ext, ...remoteInfo.config.externals };
+
+          if (config.types) {
+            getTypes(config.remote[i] + "/types/types.json", i);
+          }
           if (command !== "build") {
             log(`REMOTE MODULE (${i}) MAP:`);
             console.table(remoteInfo.alias);
@@ -208,7 +209,6 @@ export default function HomePlugin(config: homeConfig): any {
           let ret = HMRModuleHandler(url);
 
           if (ret) {
-
             HMRTypesHandler(url, config.remote);
             let time = Date.now();
             let allUpdateModule = (ret as string[])

@@ -15,7 +15,7 @@ import {
   VIRTUAL_PREFIX,
 } from "./common";
 
-export const TYPES_CACHE = path.resolve(__dirname, "../", "types");
+export const TYPES_CACHE = path.resolve(process.cwd(), "federation-type");
 const HMT_TYPES_TIMEOUT = 5000;
 
 export function HMRModuleHandler(url: string) {
@@ -95,7 +95,7 @@ export function replaceImportDeclarations(source: any, externals: externals) {
 export function ImportExpression(source: string) {
   let ret: { url: string; name: string }[] = [];
   source.replace(
-    /\s([^\s]*)\s=\simport\("(.*)"\)/g,
+    /\s([^\s]*)\s=\simport\("\.\/(.*)"\)/g,
     (_: string, name: string, i: string) => {
       ret.push({ url: i, name: name });
       return "";
@@ -112,7 +112,6 @@ export function replaceHMRImportDeclarations(
   let newSource = new MagicString(source);
 
   for (let i of imports as any) {
-
     if (FEDERATION_RE.test(i.n) && HMRMap.has(i.n)) {
       newSource.overwrite(i.s, i.e, i.n + `?t=${HMRMap.get(i.n)}`);
     }
@@ -263,14 +262,20 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
 
   for (let i in modulePathMap) {
     let jsPath =
-      "./" + join(`./types/${project}`, modulePathMap[i]).replace(/\\/g, "/");
-    if (modulePathMap[i].endsWith(".vue")) {
-      tsconfig.compilerOptions.paths[`!${project}/${i}{,.vue}`] = [jsPath];
-    } else {
-      tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
-    }
+      "./" +
+      join(`./federation-type/${project}`, modulePathMap[i]).replace(
+        /\\/g,
+        "/"
+      );
+    tsconfig.compilerOptions.paths[`!${project}/${i}.*`] = [jsPath];
+    tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
+    // if (modulePathMap[i].endsWith(".vue")) {
+
+    // } else {
+    //   tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
+    // }
   }
-  outputJSONSync(resolve(__dirname, "../tsconfig.federation.json"), tsconfig);
+  outputJSONSync(resolve(process.cwd(), "tsconfig.federation.json"), tsconfig);
 }
 
 export async function updateTypesFile(

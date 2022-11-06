@@ -1,5 +1,5 @@
 {
-    "extends": "./node_modules/vite-federation/tsconfig.federation.json",
+    "extends": "./tsconfig.federation.json",
     "compilerOptions": {
         "target": "esnext",
         "useDefineForClassFields": true,
