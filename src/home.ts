@@ -1,18 +1,11 @@
 import fs from "fs";
-import colors from "colors";
+import sirv from "sirv";
 import axios from "axios";
-import { basename, extname, relative } from "path";
-import URL from "url";
+import { basename, extname, relative, resolve, dirname } from "path";
+import URL, { fileURLToPath } from "url";
 import { init } from "es-module-lexer";
-import { externals, homeConfig, remoteListType } from "./types";
-import type {
-  PluginOption,
-  ResolvedConfig,
-  ModuleNode,
-  ModuleGraph,
-  ViteDevServer,
-  Update,
-} from "vite";
+import { externals, homeConfig, remoteListType, VisModuleGraph } from "./types";
+import type { ResolvedConfig, ModuleNode, ViteDevServer, Update } from "vite";
 import type {
   PluginContext,
   OutputBundle,
@@ -26,26 +19,30 @@ import {
   getFileName,
   replaceHotImportDeclarations,
   replaceBundleImportDeclarations,
-  VIRTUAL_PREFIX,
   HMRModuleHandler,
   replaceHMRImportDeclarations,
-  VIRTUAL_EMPTY,
   downloadTSFiles,
   analyseTSEntry,
   updateTSconfig,
   HMRTypesHandler,
   log,
   vueExtension,
-  FEDERATION_RE,
   replaceImportDeclarations,
+  resolvePathToModule,
 } from "./utils";
 import { IncomingMessage } from "http";
-let HMRMap: Map<string, number> = new Map();
-let command = "build";
-const remoteCache: any = {};
+import { Graph } from "./graph";
+import { VIRTUAL_PREFIX, FEDERATION_RE, VIRTUAL_EMPTY } from "./common";
 let server: ViteDevServer;
-let remoteList: remoteListType = {};
+let command = "build";
 
+const HMRMap: Map<string, number> = new Map();
+const remoteCache: any = {};
+const remoteList: remoteListType = {};
+const _dirname =
+  typeof __dirname !== "undefined"
+    ? __dirname
+    : dirname(fileURLToPath(import.meta.url));
 function reloadModule(id: string, time: number) {
   ///@virtual:vite-federation/!app/App
   const { moduleGraph } = server;
@@ -110,11 +107,12 @@ export default function HomePlugin(config: homeConfig): any {
     resolve: true,
     ...config.vue,
   };
+  const graph = new Graph(Object.keys(config.remote));
+
   // 返回的是插件对象
   return {
     name: "federation-h",
 
-    // 初始化hooks，只走一次
     configResolved(resolvedConfig: ResolvedConfig) {
       log(`--vite-federation is running--`);
 
@@ -123,6 +121,7 @@ export default function HomePlugin(config: homeConfig): any {
 
     async options(opts: InputOptions) {
       let ext: externals = {};
+
       await init;
       for (let i in config.remote) {
         try {
@@ -132,16 +131,13 @@ export default function HomePlugin(config: homeConfig): any {
           //向远程请求清单
           compList[i] = [];
           remoteCache[i] = {};
-          // let { data: entryRet } = await axios.get(
-          //   config.remote[i] + "/remoteEntry.js"
-          // );
+
           let { data: remoteInfo } = await axios.get(
             config.remote[i] + "/remoteList.json"
           );
-          // let entryList = ImportExpression(entryRet);
 
           ext = { ...ext, ...remoteInfo.config.externals };
-          if (command !== 'build') {
+          if (command !== "build") {
             log(`REMOTE MODULE (${i}) MAP:`);
             console.table(remoteInfo.alias);
 
@@ -179,7 +175,7 @@ export default function HomePlugin(config: homeConfig): any {
         //auto import remote config
         config.externals = ext;
         log(`FINAL EXTERNALS :`);
-        console.table(config.externals)
+        console.table(config.externals);
       }
       //补充external,也可以在rollupOption中弄
       if (!opts.external) opts.external = [];
@@ -193,7 +189,20 @@ export default function HomePlugin(config: homeConfig): any {
     configureServer(_server: ViteDevServer) {
       server = _server;
       let { ws } = _server;
-      _server.middlewares.use((req: IncomingMessage, res, next) => {
+
+      server.middlewares.use(
+        "/__federation",
+        sirv(resolve(_dirname, "./client"), {
+          single: true,
+          dev: true,
+        })
+      );
+      server.middlewares.use("/__federation_api", (req, res) => {
+        res.setHeader("Content-Type", "application/json");
+        res.write(JSON.stringify(graph.generate(), null, 2));
+        res.end();
+      });
+      server.middlewares.use((req: IncomingMessage, res, next) => {
         let url = req.url || "";
         try {
           let ret = HMRModuleHandler(url);
@@ -218,6 +227,11 @@ export default function HomePlugin(config: homeConfig): any {
     async resolveId(id: string, i: string) {
       // /^\!(.*)\/(.*)$/
       if (i.startsWith(VIRTUAL_PREFIX)) {
+        graph.addModule(
+          resolvePathToModule(URL.resolve(i, id)),
+          resolvePathToModule(i)
+        );
+
         return URL.resolve(i, id);
       }
 
@@ -239,6 +253,8 @@ export default function HomePlugin(config: homeConfig): any {
           }
         }
 
+        graph.addModule(resolvePathToModule(id), resolvePathToModule(i));
+
         if (!config.cache) return VIRTUAL_PREFIX + id;
         if (remoteCache[projectName][normalizeFileName(moduleName)]) {
           return VIRTUAL_PREFIX + id;
@@ -251,7 +267,8 @@ export default function HomePlugin(config: homeConfig): any {
             return VIRTUAL_PREFIX + id;
           } catch (e) {
             log(
-              `Request module was not found, returns an empty module--${config.remote[projectName]
+              `Request module was not found, returns an empty module--${
+                config.remote[projectName]
               }/${normalizeFileName(moduleName)} `,
               "grey"
             );
@@ -265,6 +282,8 @@ export default function HomePlugin(config: homeConfig): any {
       if (id === VIRTUAL_EMPTY) return "";
       if (id.startsWith(VIRTUAL_PREFIX)) {
         // let source = id.match(/^\0\@(.*)\/(.*)$/);
+
+        if (id.endsWith(".vue")) return "";
 
         if (FEDERATION_RE.test(id)) {
           let source = id.match(FEDERATION_RE) as string[];
@@ -291,14 +310,10 @@ export default function HomePlugin(config: homeConfig): any {
                 `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
               );
               return data;
-              // return replaceImportDeclarations(
-              //   data,
-              //   config.externals,
-              //   projectName
-              // );
             } catch (e) {
               log(
-                `Request module was not found, returns an empty module--${config.remote[projectName]
+                `Request module was not found, returns an empty module--${
+                  config.remote[projectName]
                 }/${normalizeFileName(moduleName)}`,
                 "grey"
               );
@@ -364,15 +379,19 @@ export default function HomePlugin(config: homeConfig): any {
         return {
           html,
           tags: [
-            {//polyfill
+            {
+              //polyfill
               tag: "script",
-              attrs: { async: true, src: "https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js" },
+              attrs: {
+                async: true,
+                src: "https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js",
+              },
               injectTo: "head-prepend",
             },
             {
               tag: "script",
               attrs: {
-                type: "importmap",//systemjs-importmap
+                type: "importmap", //systemjs-importmap
               },
               children: `{"imports":${JSON.stringify(config.externals)}}`,
               injectTo: "head-prepend",
@@ -396,4 +415,3 @@ export default function HomePlugin(config: homeConfig): any {
     },
   };
 }
-

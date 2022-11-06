@@ -24,7 +24,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
         },
         mode: mode,
         cache: false,
-        importMap: true,
+        importMap: false,
         types: false,
         info: false,
       });

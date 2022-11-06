@@ -3,7 +3,7 @@ import { init } from "es-module-lexer";
 import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
 import fs from "fs";
-import fse from "fs-extra"
+import fse from "fs-extra";
 import contentHash from "content-hash";
 
 import type {
@@ -15,15 +15,13 @@ import type {
 } from "rollup";
 import {
   replaceBundleImportDeclarations,
-  cancelScoped,
   getModuleName,
-  VIRTUAL_HMR_PREFIX,
   sendHMRInfo,
   log,
   replaceEntryFile,
   ImportExpression,
 } from "./utils";
-
+import { VIRTUAL_HMR_PREFIX } from "./common";
 
 interface HMRInfo {
   changeFile: string;
@@ -33,10 +31,10 @@ let HMRconfig: HMRInfo = {
   changeFile: "",
   cssFiles: {},
 };
-let initEntryFiles: string[] = []
+let initEntryFiles: string[] = [];
 let metaData: any;
-let alias: { name: string, url: string }[]
-let sourceGraph: { [key: string]: string[] } = {}
+let alias: { name: string; url: string }[];
+let sourceGraph: { [key: string]: string[] } = {};
 export default function remotePart(config: remoteConfig): any {
   metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
@@ -51,9 +49,7 @@ export default function remotePart(config: remoteConfig): any {
     apply: "build",
     enforce: "pre",
     async options(opts: RollupOptions) {
-
       await init;
-
 
       if (!opts.external) opts.external = [];
       for (let i in config.externals) {
@@ -65,7 +61,6 @@ export default function remotePart(config: remoteConfig): any {
 
     //init config
     async config(opts: ResolvedConfig) {
-
       if (!opts.build.outDir) {
         opts.build.outDir = config.outDir || "remote";
       }
@@ -73,7 +68,6 @@ export default function remotePart(config: remoteConfig): any {
         opts.build.cssCodeSplit = true;
       }
       if (!opts.build.lib) {
-
         opts.build.lib = {
           entry: entryFile,
           name: "remoteEntry",
@@ -84,13 +78,15 @@ export default function remotePart(config: remoteConfig): any {
         };
       }
       if (!opts.build.rollupOptions) {
-        opts.build.rollupOptions = {}
+        opts.build.rollupOptions = {};
       }
       if (!opts.build.rollupOptions.output) {
-        opts.build.rollupOptions.output = {}
+        opts.build.rollupOptions.output = {};
       }
-      (opts.build.rollupOptions.output as OutputOptions).chunkFileNames = "[name].js";
-      (opts.build.rollupOptions.output as OutputOptions).assetFileNames = "[name][extname]";
+      (opts.build.rollupOptions.output as OutputOptions).chunkFileNames =
+        "[name].js";
+      (opts.build.rollupOptions.output as OutputOptions).assetFileNames =
+        "[name][extname]";
     },
 
     watchChange(id: string, change: any) {
@@ -102,11 +98,8 @@ export default function remotePart(config: remoteConfig): any {
     async writeBundle(_: any, module: any) {
       let updateList: string[] = [];
       if (HMRconfig.changeFile && config.HMR) {
-
         for (let i in module) {
-          if (
-            i.endsWith(".css")
-          ) {
+          if (i.endsWith(".css")) {
             let cssHash = contentHash.encode("onion", module[i].source);
             if (cssHash !== HMRconfig.cssFiles[i]) {
               updateList.push(i);
@@ -148,30 +141,28 @@ export default function remotePart(config: remoteConfig): any {
             let cssHash = contentHash.encode("onion", module[i].source);
             HMRconfig.cssFiles[i] = cssHash;
           }
-
         }
       }
     },
     generateBundle(p: PluginContext, data: OutputBundle) {
-      let code = (data["remoteEntry.js"] as OutputChunk).code = replaceEntryFile((data["remoteEntry.js"] as OutputChunk).code, fs.readFileSync(resolve(process.cwd(), entryFile)).toString());
-      alias = ImportExpression(code)
-
+      let code = ((data["remoteEntry.js"] as OutputChunk).code =
+        replaceEntryFile(
+          (data["remoteEntry.js"] as OutputChunk).code,
+          fs.readFileSync(resolve(process.cwd(), entryFile)).toString()
+        ));
+      alias = ImportExpression(code);
 
       for (let i in data) {
         for (let entry of initEntryFiles) {
-
-          if (basename(entry).split(".")[0]+'.js' === i) {
-            Object.keys((data[i] as OutputChunk).modules).forEach(fp => {
-
+          if (basename(entry).split(".")[0] + ".js" === i) {
+            Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
               if (fse.existsSync(fp)) {
-                sourceGraph[entry].push(relative(process.cwd(), fp))
+                sourceGraph[entry].push(relative(process.cwd(), fp));
               }
-            })
+            });
           }
         }
-
       }
-
 
       if (config.importMap) return;
       for (let i in data) {
@@ -187,26 +178,26 @@ export default function remotePart(config: remoteConfig): any {
     resolveId(id: string, importer: string) {
       if (importer === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
         log(`Remote entry file --${id}`);
-        let fileName = relative(process.cwd(), resolve(importer, id))
-        sourceGraph[fileName] = []
-        initEntryFiles.push(fileName)
+        let fileName = relative(process.cwd(), resolve(importer, id));
+        sourceGraph[fileName] = [];
+        initEntryFiles.push(fileName);
       }
-
     },
     transform(code: string, id: string) {
-
       if (!id.includes("node_modules")) {
         if (/\.vue$/.test(id) && vueConfig.addTag) {
           log(`Add projectID & fileID for VUE component --${id}`);
-          return code + `\n<federation>export default (block)=>{block.projectID="${config.project || 'federation-r'}";block.fileID="${basename(id)}";}</federation>`
+          return (
+            code +
+            `\n<federation>export default (block)=>{block.projectID="${
+              config.project || "federation-r"
+            }";block.fileID="${basename(id)}";}</federation>`
+          );
           // log(` (.vue) remove scoped style --${id}`);
           // cancelScoped(code);
         }
       }
-
-
     },
-
 
     closeBundle() {
       let dir = resolve(process.cwd(), config.outDir || "remote");
@@ -220,9 +211,9 @@ export default function remotePart(config: remoteConfig): any {
         metaData.files = files;
         metaData.config = config;
         metaData.initEntryFiles = initEntryFiles;
-        metaData.alias = alias
-        metaData.sourceGraph = sourceGraph
-        fse.outputJSON(p, metaData)
+        metaData.alias = alias;
+        metaData.sourceGraph = sourceGraph;
+        fse.outputJSON(p, metaData);
       });
     },
   };

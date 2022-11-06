@@ -37,7 +37,7 @@ export default defineConfig({
         homePort: "http://localhost:4100",
       },
       cssSplit: true,
-      importMap: false, //Negative if home is esm but not importmap
+      importMap: true, //Negative if home is esm but not importmap
     }),
     ,
   ],

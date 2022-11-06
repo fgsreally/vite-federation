@@ -1,0 +1,16 @@
+html,
+body,
+#sigma-container {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-image: linear-gradient(62deg, #fbab7e 0%, #f7ce68 100%);
+}
+
+#search {
+  position: absolute;
+  right: 1em;
+  top: 1em;
+}

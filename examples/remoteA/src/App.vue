@@ -9,7 +9,7 @@
     :props="defaultProps"
   />
   <div @click="$emit('firstClick')">{{ props.value }}</div>
-  <HelloWorld msg="next1"></HelloWorld>
+  <HelloWorld msg="next5"></HelloWorld>
 </template>
 
 <script setup lang="ts">

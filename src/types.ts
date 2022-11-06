@@ -3,7 +3,7 @@ export interface externals {
 }
 interface remoteVueconfig {
   delScoped?: boolean;
-  addTag?: boolean
+  addTag?: boolean;
 }
 export interface remoteConfig {
   outDir?: string;
@@ -35,7 +35,7 @@ export interface homeConfig {
   version?: number;
   remote: externals;
   mode: "hot" | "cold";
-  cache: boolean;
+  cache?: boolean;
   importMap: boolean;
   types?: boolean;
   info?: boolean;
@@ -57,7 +57,29 @@ interface Options {
 }
 
 export type devConfig = {
-  externals: { [key in string]: string },
-  remote?: { [key in string]: string },
-  opts?: Options
-}
+  externals: { [key in string]: string };
+  remote?: { [key in string]: string };
+  opts?: Options;
+};
+
+export type VisModuleGraph = {
+  nodes: {
+    key: string | number;
+    attributes: {
+      x: number;
+      y: number;
+      size: number;
+      label: string;
+      color: string;
+    };
+  }[];
+  edges: {
+    key: string | number;
+    source: string | number;
+    target: string | number;
+    attributes: {
+      color: string;
+      size: number;
+    };
+  }[];
+};

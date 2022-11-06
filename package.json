@@ -14,7 +14,8 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "dist/index.d.ts"
     },
     "./*": {
       "import": "./dist/",
@@ -23,7 +24,7 @@
     "./helper": {
       "import": "./dist/helper/index.js",
       "require": "./dist/helper/index.cjs",
-      "types":"./dist/helper/index.d.ts"
+      "types": "./dist/helper/index.d.ts"
     }
   },
   "typesVersions": {
@@ -38,10 +39,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsup",
+    "build": "tsup && npm run build:view",
+    "build:view": "vite build",
     "watch": "tsup --watch",
-    "preview": "vite preview",
-    "example:remote": "npm -C examples/remote run build:remote",
+    "example:remote": "npm -C examples/remote run build:remote --watch",
     "example:home": "npm -C examples/home run dev:static",
     "e2e": "cypress open"
   },
@@ -57,10 +58,13 @@
     "fs-extra": "^10.1.0",
     "magic-string": "^0.26.4",
     "semver": "^7.3.8",
+    "sirv": "^2.0.2",
     "vite": "^3.1.0"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^3.0.0",
+    "sigma": "^2.4.0",
+    "graphology": "^0.25.1",
     "@cypress/vue": "^3.1.0",
     "@rollup/pluginutils": "^4.2.1",
     "@types/download": "^8.0.1",

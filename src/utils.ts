@@ -7,13 +7,10 @@ import colors, { Color } from "colors";
 import fs from "fs";
 import { outputFileSync, outputJSONSync, readJSONSync } from "fs-extra";
 import MagicString from "magic-string";
-import { minVersion } from "semver"
+import { minVersion } from "semver";
+import { FEDERATION_RE, VIRTUAL_HMR_PREFIX, ESM_SH_URL, VIRTUAL_PREFIX } from "./common";
 
-export const FEDERATION_RE = /\!(.*)\/([^?]*)/;
-export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
-export const VIRTUAL_EMPTY = "/@virtual:EmptyModule";
-export const VIRTUAL_HMR_PREFIX = "VIRTUAL-HMR";
-export const ESM_SH_URL = "https://esm.sh/"
+
 export const TYPES_CACHE = path.resolve(__dirname, "../", "types");
 const HMT_TYPES_TIMEOUT = 5000;
 
@@ -100,7 +97,6 @@ export function ImportExpression(source: string) {
       return "";
     }
   );
-
 
   return ret;
 }
@@ -266,7 +262,6 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
       tsconfig.compilerOptions.paths[`!${project}/${i}{,.vue}`] = [jsPath];
     } else {
       tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
-
     }
   }
   outputJSONSync(resolve(__dirname, "../tsconfig.federation.json"), tsconfig);
@@ -282,7 +277,7 @@ export async function updateTypesFile(
     let p = path.resolve(TYPES_CACHE, project, filePath);
     outputFileSync(p, data);
     log(`update types file --${p}`, "blue");
-  } catch (e) { }
+  } catch (e) {}
 }
 export async function downloadTSFiles(url: string, project: string) {
   let { data } = await axios.get(url);
@@ -320,24 +315,34 @@ export function log(msg: string, color: keyof Color = "green") {
   console.log(colors[color](`\n${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
 
-export function replaceEntryFile(code: string, source: string) {//work for vite^3
+export function replaceEntryFile(code: string, source: string) {
+  //work for vite^3
 
   const [i1] = parse(source, "optional-sourcename");
   const [i2] = parse(code, "optional-sourcename");
   let newSource = new MagicString(source);
-  
+
   i1.forEach((item, i) => {
-    newSource.overwrite(item.s, item.e, `"${i2[i].n}"`)
-  })
+    newSource.overwrite(item.s, item.e, `"${i2[i].n}"`);
+  });
   return newSource.toString();
 }
 
-export function auto(imports?: string[]) {//work for esm.sh
-  const { dependencies } = readJSONSync(resolve(process.cwd(), "package.json"))
-  let externals: externals = {}
+export function auto(imports?: string[]) {
+  //work for esm.sh
+  const { dependencies } = readJSONSync(resolve(process.cwd(), "package.json"));
+  let externals: externals = {};
   for (let i in dependencies) {
     if (!imports || imports.includes(i))
-      externals[i] = `${ESM_SH_URL}${i}@${minVersion(dependencies[i])}`
+      externals[i] = `${ESM_SH_URL}${i}@${minVersion(dependencies[i])}`;
   }
-  return externals
+  return externals;
 }
+
+export function resolvePathToModule(id: string) {
+  if (id.includes(VIRTUAL_PREFIX)) id = id.split(VIRTUAL_PREFIX)[1];
+  if (FEDERATION_RE.test(id)) return id;
+  return "";
+}
+
+
