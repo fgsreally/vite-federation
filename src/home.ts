@@ -208,6 +208,7 @@ export default function HomePlugin(config: homeConfig): any {
           let ret = HMRModuleHandler(url);
 
           if (ret) {
+
             HMRTypesHandler(url, config.remote);
             let time = Date.now();
             let allUpdateModule = (ret as string[])

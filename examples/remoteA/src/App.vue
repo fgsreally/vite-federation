@@ -9,7 +9,7 @@
     :props="defaultProps"
   />
   <div @click="$emit('firstClick')">{{ props.value }}</div>
-  <HelloWorld msg="next5"></HelloWorld>
+  <HelloWorld msg="next550"></HelloWorld>
 </template>
 
 <script setup lang="ts">
@@ -17,9 +17,7 @@ import { ref, inject } from "vue";
 import { ElTree } from "element-plus";
 import HelloWorld from "./components/HelloWorld.vue";
 
-if (process.env.NODE_ENV === "development") {
-  console.log(1);
-}
+
 
 const props = defineProps({
   value: String,

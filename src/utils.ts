@@ -8,8 +8,12 @@ import fs from "fs";
 import { outputFileSync, outputJSONSync, readJSONSync } from "fs-extra";
 import MagicString from "magic-string";
 import { minVersion } from "semver";
-import { FEDERATION_RE, VIRTUAL_HMR_PREFIX, ESM_SH_URL, VIRTUAL_PREFIX } from "./common";
-
+import {
+  FEDERATION_RE,
+  VIRTUAL_HMR_PREFIX,
+  ESM_SH_URL,
+  VIRTUAL_PREFIX,
+} from "./common";
 
 export const TYPES_CACHE = path.resolve(__dirname, "../", "types");
 const HMT_TYPES_TIMEOUT = 5000;
@@ -105,13 +109,15 @@ export function replaceHMRImportDeclarations(
   HMRMap: Map<string, number>
 ) {
   const [imports] = parse(source, "optional-sourcename");
+  let newSource = new MagicString(source);
 
   for (let i of imports as any) {
-    if (/^\!(.*)\/([^?]*)/.test(i.n) && HMRMap.has(i.n)) {
-      source = source.replace(i.n, i.n + `?t=${HMRMap.get(i.n)}`);
+
+    if (FEDERATION_RE.test(i.n) && HMRMap.has(i.n)) {
+      newSource.overwrite(i.s, i.e, i.n + `?t=${HMRMap.get(i.n)}`);
     }
   }
-  return source;
+  return newSource.toString();
 }
 
 export function replaceHotImportDeclarations(source: any, config: homeConfig) {
@@ -344,5 +350,3 @@ export function resolvePathToModule(id: string) {
   if (FEDERATION_RE.test(id)) return id;
   return "";
 }
-
-
