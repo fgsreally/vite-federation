@@ -39,7 +39,7 @@ export interface homeConfig {
   importMap: boolean;
   types?: boolean;
   info?: boolean;
-  vue?: homeVueconfig;
+
 }
 
 export type remoteListType = {

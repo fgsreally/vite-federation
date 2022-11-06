@@ -1,8 +1,9 @@
+import { ModuleNode } from "vite";
 import axios from "axios";
-import path, { join, resolve } from "path";
+import { extname, join, relative, resolve } from "path";
 import URL from "url";
 import { ImportSpecifier, parse } from "es-module-lexer";
-import { homeConfig, externals, ModulePathMap } from "./types";
+import { homeConfig, externals, ModulePathMap, remoteListType } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
 import { outputFileSync, outputJSONSync, readJSONSync } from "fs-extra";
@@ -15,7 +16,7 @@ import {
   VIRTUAL_PREFIX,
 } from "./common";
 
-export const TYPES_CACHE = path.resolve(process.cwd(), "federation-type");
+export const TYPES_CACHE = resolve(process.cwd(), "federation-type");
 const HMT_TYPES_TIMEOUT = 5000;
 
 export function HMRModuleHandler(url: string) {
@@ -38,14 +39,9 @@ export function HMRTypesHandler(url: string, remoteConfig: externals) {
   }
 }
 
-// export function replaceStr2(
-//   str: string,
-//   first: number,
-//   last: number,
-//   char: string
-// ): string {
-//   return str.substring(0, first) + char + str.substring(last);
-// }
+export function normalizeFileName(name: string) {
+  return `${name}${extname(name) ? "" : ".js"}`;
+}
 
 export function cancelScoped(source: string): string {
   let newSource = source.replace(/<style.*?>([\s\S]+?)<\/style>/, (_, js) => {
@@ -54,31 +50,12 @@ export function cancelScoped(source: string): string {
   return `<style>${newSource}</style>`;
 }
 
-export function getAbsolutePath(url: string, rel: string) {
-  if (/^\.\//.test(rel)) {
-    return url + rel.substring(1);
-  }
-  return false;
-}
-export function getFileName(rel: string) {
-  return rel.substring(2);
-}
-export function normalizeFileName(name: string) {
-  return `${name}${path.extname(name) ? "" : ".js"}`;
-}
-
 export function replaceImportDeclarations(source: any, externals: externals) {
   // let newSource = source;
   let newSource = new MagicString(source);
 
   const [imports] = parse(source, "optional-sourcename");
   for (let i of imports as any) {
-    // if (/^\.\//.test(i.n)) {
-    //   newSource = newSource.replace(
-    //     i.n,
-    //     `!${project}/${getFileName(i.n).replace(/\.js$/, "")}`
-    //   );
-    // }
     for (let j in externals) {
       if (i.n === externals[j]) {
         // newSource = newSource.replace(i.n, j);
@@ -95,7 +72,7 @@ export function replaceImportDeclarations(source: any, externals: externals) {
 export function ImportExpression(source: string) {
   let ret: { url: string; name: string }[] = [];
   source.replace(
-    /\s([^\s]*)\s=\simport\("\.\/(.*)"\)/g,
+    /\s([^\s]*)\s=\simport\("\.\/(.*)\.js"\)/g,
     (_: string, name: string, i: string) => {
       ret.push({ url: i, name: name });
       return "";
@@ -104,63 +81,46 @@ export function ImportExpression(source: string) {
 
   return ret;
 }
-export function replaceHMRImportDeclarations(
-  source: string,
-  HMRMap: Map<string, number>
+
+export function replaceHotImportDeclarations(
+  source: any,
+  config: homeConfig,
+  aliasMap: remoteListType
 ) {
-  const [imports] = parse(source, "optional-sourcename");
-  let newSource = new MagicString(source);
-
-  for (let i of imports as any) {
-    if (FEDERATION_RE.test(i.n) && HMRMap.has(i.n)) {
-      newSource.overwrite(i.s, i.e, i.n + `?t=${HMRMap.get(i.n)}`);
-    }
-  }
-  return newSource.toString();
-}
-
-export function replaceHotImportDeclarations(source: any, config: homeConfig) {
   const [imports] = parse(source, "optional-sourcename");
   // let newSource = source;
   let newSource = new MagicString(source);
   let cssImports = "";
   for (let i of imports as any) {
     if (FEDERATION_RE.test(i.n)) {
-      let ret = i.n.match(FEDERATION_RE);
+      let [project, moduleName, basename] = resolveModuleAlias(i.n, aliasMap);
 
-      let fileName = normalizeFileName(ret[2]);
-      if (path.extname(fileName) === ".js") {
-        newSource.overwrite(i.s, i.e, config.remote[ret[1]] + `/${fileName}`);
+      if (extname(moduleName) === ".js") {
+        newSource.overwrite(
+          i.s,
+          i.e,
+          URL.resolve(config.remote[project], moduleName)
+        );
       }
-      if (path.extname(fileName) === ".css") {
-        cssImports += `\nloadCss("${config.remote[ret[1]]}/${fileName}");`;
+      if (extname(moduleName) === ".v") {
+        newSource.overwrite(
+          i.s,
+          i.e,
+          URL.resolve(config.remote[project], basename + ".js")
+        );
+        cssImports += `\nloadCss("${config.remote[project]}/${basename}.css");`;
+      }
+
+      if (extname(moduleName) === ".css") {
+        cssImports += `\nloadCss("${config.remote[project]}/${moduleName}");`;
         newSource.overwrite(i.ss, i.se, "");
       }
-      //if (path.extname(fileName) === ".js")
-      // newSource = newSource.replace(
-      //   i.n,
-      //   config.remote[ret[1]] + `/${fileName}`
-      // );
-      // if (path.extname(fileName) === ".css") {
-      //   cssImports = `loadCss("${config.remote[ret[1]]}/${fileName}")`;
-      //   newSource = newSource.replace(newSource.substring(i.ss, i.se), "");
-      // }
     }
   }
   if (cssImports.length > 0) {
     newSource
-      .prepend(`import {loadCss} from "vite-federation/helper"`)
+      .prepend(`import {loadCss} from "vite-federation/helper"\n`)
       .append(cssImports);
-    // newSource =
-    //   newSource +
-    //   `export function loadCss(url){
-    //   let css = document.createElement('link');
-    //   css.href = url;
-    //   css.rel = 'stylesheet';
-    //   css.type = 'text/css';
-    //   document.head.appendChild(css);
-    // };` +
-    //   cssImports;
   }
   return newSource.toString();
 }
@@ -197,27 +157,19 @@ export function replaceBundleImportDeclarations(
   return newSource.toString();
 }
 
-export function vueExtension(source: string) {
-  let newSource = new MagicString(source);
-
-  const [imports] = parse(source, "optional-sourcename");
-  let addonCss = ``;
-
-  for (let i of imports as any) {
-    if (!i.n) continue;
-    if (FEDERATION_RE.test(i.n)) {
-      let ret = i.n.match(FEDERATION_RE);
-      if (ret[2].endsWith(".vue")) {
-        newSource.overwrite(i.s, i.e, `${i.n.slice(0, -4)}`);
-        addonCss += `import "${i.n.replace(/\.vue$/, "")}.css"\n`;
-      }
-    }
-  }
-  return addonCss + newSource.toString();
+export function vueExtension(moduleName: string) {
+  return `import Comp from "./${moduleName}.js"\n
+   export default Comp
+  import "./${moduleName}.css"
+  `;
 }
 
 export function getModuleName(fileName: string) {
-  return fileName.replace(path.extname(fileName), "");
+  return fileName.replace(extname(fileName), "");
+}
+
+export function getHMRFilePath(i: ModuleNode) {
+  return "/" + relative(process.cwd(), i?.file || "").replace(/\\/g, "/");
 }
 
 export async function sendHMRInfo({
@@ -240,7 +192,6 @@ export function resolveURLQuery(url: string) {
   if (!url.startsWith(`/${VIRTUAL_HMR_PREFIX}`)) return false;
   let queryUrl = url.replace(`/${VIRTUAL_HMR_PREFIX}`, "");
   let query = new URLSearchParams(queryUrl);
-
   return {
     file: query.get("file"),
     project: query.get("project"),
@@ -285,7 +236,7 @@ export async function updateTypesFile(
 ) {
   try {
     let { data } = await axios.get(URL.resolve(baseUrl, filePath));
-    let p = path.resolve(TYPES_CACHE, project, filePath);
+    let p = resolve(TYPES_CACHE, project, filePath);
     outputFileSync(p, data);
     log(`update types file --${p}`, "blue");
   } catch (e) {}
@@ -301,7 +252,7 @@ export async function downloadTSFiles(url: string, project: string) {
         entryFileCode = code.replace(/^export declare/gm, "export");
       }
 
-      outputFileSync(path.resolve(TYPES_CACHE, project, i), code);
+      outputFileSync(resolve(TYPES_CACHE, project, i), code);
     }
   }
   return entryFileCode;
@@ -312,9 +263,9 @@ let rootDir: string;
 export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
   if (!rootDir) rootDir = dirPath;
   fs.readdirSync(dirPath, { withFileTypes: true }).forEach(function (file) {
-    var filePath = path.join(dirPath, file.name);
+    var filePath = join(dirPath, file.name);
     if (file.isFile()) {
-      fileSet.push(path.relative(rootDir, filePath).replace("\\", "/"));
+      fileSet.push(relative(rootDir, filePath).replace("\\", "/"));
     } else if (file.isDirectory()) {
       traverseDic(filePath);
     }
@@ -354,4 +305,17 @@ export function resolvePathToModule(id: string) {
   if (id.includes(VIRTUAL_PREFIX)) id = id.split(VIRTUAL_PREFIX)[1];
   if (FEDERATION_RE.test(id)) return id;
   return "";
+}
+
+export function resolveModuleAlias(id: string, alias: remoteListType) {
+  let [_, project, moduleName] = id.match(FEDERATION_RE) as string[];
+
+  let baseName = moduleName.split(".")[0];
+  for (let i of alias[project]) {
+    if (i.name === baseName) {
+      baseName = i.url;
+    }
+  }
+
+  return [project, baseName + (extname(moduleName) || ".js"), baseName];
 }

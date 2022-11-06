@@ -109,7 +109,7 @@ export default function remotePart(config: remoteConfig): any {
         }
         for (let i of module["remoteEntry.js"].dynamicImports) {
           if (HMRconfig.changeFile in module[i].modules) {
-            updateList.push(getModuleName(i));
+            updateList.push(i);
           }
         }
         try {
@@ -156,7 +156,7 @@ export default function remotePart(config: remoteConfig): any {
         for (let entry of initEntryFiles) {
           if (basename(entry).split(".")[0] + ".js" === i) {
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
-              if (fse.existsSync(fp)) {
+              if (fse.existsSync(fp) && !fp.includes("node_modules")) {
                 sourceGraph[entry].push(relative(process.cwd(), fp));
               }
             });

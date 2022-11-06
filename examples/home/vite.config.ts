@@ -23,16 +23,20 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           app: "http://127.0.0.1:8080",//remote static server
         },
         mode: mode,
-        cache: false,
+        cache: true,
         importMap: true,
-        types: true,
+        types: false,
         info: false,
       });
 
   return {
+    optimizeDeps: {
+      exclude: ["/@virtual:vite-federation/!app/*"]
+    },
     server: {
       port: 4100,
     },
-    plugins: [vue(), plugin, legacy()],
+    plugins: [vue(), plugin,// legacy()
+  ],
   };
 };

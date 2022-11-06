@@ -14,13 +14,9 @@ import type {
 } from "rollup";
 
 import {
-  getAbsolutePath,
-  normalizeFileName,
-  getFileName,
   replaceHotImportDeclarations,
   replaceBundleImportDeclarations,
   HMRModuleHandler,
-  replaceHMRImportDeclarations,
   downloadTSFiles,
   analyseTSEntry,
   updateTSconfig,
@@ -29,6 +25,8 @@ import {
   vueExtension,
   replaceImportDeclarations,
   resolvePathToModule,
+  resolveModuleAlias,
+  getHMRFilePath,
 } from "./utils";
 import { IncomingMessage } from "http";
 import { Graph } from "./graph";
@@ -38,7 +36,7 @@ let command = "build";
 
 const HMRMap: Map<string, number> = new Map();
 const remoteCache: any = {};
-const remoteList: remoteListType = {};
+const aliasMap: remoteListType = {};
 const _dirname =
   typeof __dirname !== "undefined"
     ? __dirname
@@ -52,7 +50,6 @@ function reloadModule(id: string, time: number) {
     if (id.endsWith(".css")) {
       log(`reload module ${id} --[css]`, "yellow");
       moduleGraph.invalidateModule(module);
-
       HMRMap.set(id, time);
       return [
         {
@@ -66,16 +63,30 @@ function reloadModule(id: string, time: number) {
       let ret = [];
       for (let i of (module as ModuleNode).importers) {
         moduleGraph.invalidateModule(i);
-        let path =
-          "/" + relative(process.cwd(), i?.file || "").replace(/\\/g, "/");
+        moduleGraph.invalidateModule(module);
+
+        let path = getHMRFilePath(i);
         ret.push({
           type: "js-update",
           path: path,
           acceptedPath: path,
           timestamp: time,
         });
+        if (i.file?.endsWith(".v")) {
+          //vue hmr logic
+          for (let j of (i as ModuleNode).importers) {
+            moduleGraph.invalidateModule(j);
+            let parentPath = getHMRFilePath(j);
+            ret.push({
+              type: "js-update",
+              path: parentPath,
+              acceptedPath: parentPath,
+              timestamp: time,
+            });
+            HMRMap.set(id.split(".")[0] + ".v", time);
+          }
+        }
       }
-      moduleGraph.invalidateModule(module);
       log(`reload module ${id} --[js]`, "yellow");
 
       HMRMap.set(id, time);
@@ -103,16 +114,12 @@ async function getTypes(url: string, project: string) {
 
 export default function HomePlugin(config: homeConfig): any {
   let compList: any = {};
-  let vueConfig = {
-    resolve: true,
-    ...config.vue,
-  };
+
   const graph = new Graph(Object.keys(config.remote));
 
   // 返回的是插件对象
   return {
     name: "federation-h",
-
     configResolved(resolvedConfig: ResolvedConfig) {
       log(`--vite-federation is running--`);
 
@@ -125,6 +132,9 @@ export default function HomePlugin(config: homeConfig): any {
       await init;
       for (let i in config.remote) {
         try {
+          if (config.types) {
+            getTypes(config.remote[i] + "/types/types.json", i);
+          }
           //向远程请求清单
           compList[i] = [];
           remoteCache[i] = {};
@@ -135,9 +145,8 @@ export default function HomePlugin(config: homeConfig): any {
 
           ext = { ...ext, ...remoteInfo.config.externals };
 
-          if (config.types) {
-            getTypes(config.remote[i] + "/types/types.json", i);
-          }
+          aliasMap[i] = remoteInfo.alias;
+
           if (command !== "build") {
             log(`REMOTE MODULE (${i}) MAP:`);
             console.table(remoteInfo.alias);
@@ -149,30 +158,25 @@ export default function HomePlugin(config: homeConfig): any {
               log(`REMOTE MODULE (${i}) CONFIG`);
               console.log(remoteInfo);
             }
-          }
-          remoteList[i] = remoteInfo.alias;
 
-          if (!config.cache) break;
-
-          for (let j of remoteList[i]) {
-            //请求清单上js文件并缓存
-            let url = getAbsolutePath(config.remote[i], j.url);
-
-            if (!url) break;
-
-            let fileName = getFileName(j.url);
-            let { data } = await axios.get(url);
-
-            remoteCache[i][fileName] = data;
-            compList[i].push(fileName);
+            if (config.cache) {
+              for (let j of aliasMap[i]) {
+                //cache
+                let url = `${config.remote[i]}/${j.url}.js`;
+                let { data } = await axios.get(url);
+                log(`cache module --${i}/${j.name}`, "yellow");
+                remoteCache[i][`${j.url}.js`] = data;
+              }
+            }
           }
         } catch (e) {
+          console.log(e);
           log(`can't find remote module (${i}) -- ${config.remote[i]}`, "red");
           // process.exit(1);
         }
       }
 
-      if (!config.externals && command !== "build") {
+      if (!config.externals) {
         //auto import remote config
         config.externals = ext;
         log(`FINAL EXTERNALS :`);
@@ -203,6 +207,7 @@ export default function HomePlugin(config: homeConfig): any {
         res.write(JSON.stringify(graph.generate(), null, 2));
         res.end();
       });
+
       server.middlewares.use((req: IncomingMessage, res, next) => {
         let url = req.url || "";
         try {
@@ -226,115 +231,50 @@ export default function HomePlugin(config: homeConfig): any {
       });
     },
     async resolveId(id: string, i: string) {
-      // /^\!(.*)\/(.*)$/
       if (i.startsWith(VIRTUAL_PREFIX)) {
-        graph.addModule(
-          resolvePathToModule(URL.resolve(i, id)),
-          resolvePathToModule(i)
-        );
+        id = URL.resolve(i, id);
+        graph.addModule(resolvePathToModule(id), resolvePathToModule(i));
+        let [project, moduleName] = resolveModuleAlias(id, aliasMap);
 
-        return URL.resolve(i, id);
+        let module = `!${project}/${moduleName}`;
+
+        let query = HMRMap.has(module) ? `?t=${HMRMap.get(module)}` : "";
+        return id + query;
       }
 
       if (FEDERATION_RE.test(id) && !id.startsWith(VIRTUAL_PREFIX)) {
-        let source = id.match(FEDERATION_RE) as string[];
-        let projectName = source[1];
-        let moduleName = source[2];
-
-        if (remoteList[projectName]) {
-          for (let i of remoteList[projectName]) {
-            if (i.name === moduleName.split(".")[0]) {
-              moduleName =
-                basename(i.url, ".js") +
-                (moduleName.split(".")[1]
-                  ? "." + moduleName.split(".")[1]
-                  : "");
-              break;
-            }
-          }
-        }
-
-        graph.addModule(resolvePathToModule(id), resolvePathToModule(i));
-
-        if (!config.cache) return VIRTUAL_PREFIX + id;
-        if (remoteCache[projectName][normalizeFileName(moduleName)]) {
-          return VIRTUAL_PREFIX + id;
-        } else {
-          try {
-            const ret = await axios.get(
-              `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
-            );
-            remoteCache[projectName][normalizeFileName(moduleName)] = ret.data;
-            return VIRTUAL_PREFIX + id;
-          } catch (e) {
-            log(
-              `Request module was not found, returns an empty module--${
-                config.remote[projectName]
-              }/${normalizeFileName(moduleName)} `,
-              "grey"
-            );
-
-            return VIRTUAL_EMPTY;
-          }
-        }
+        let [project, moduleName] = resolveModuleAlias(id, aliasMap);
+        let module = `!${project}/${moduleName}`;
+        let query = HMRMap.has(module) ? `?t=${HMRMap.get(module)}` : "";
+        graph.addModule(module, resolvePathToModule(i));
+        return VIRTUAL_PREFIX + `${module}${query}`;
       }
     },
     async load(id: string) {
       if (id === VIRTUAL_EMPTY) return "";
+
       if (id.startsWith(VIRTUAL_PREFIX)) {
-        // let source = id.match(/^\0\@(.*)\/(.*)$/);
+        let [project, moduleName, baseName] = resolveModuleAlias(id, aliasMap);
+        let addonCode = ``;
 
-        if (id.endsWith(".vue")) return "";
+        if (extname(moduleName) === ".v") {
+          return vueExtension(baseName);
+        }
+        let module = `!${project}/${moduleName}`;
+        try {
+          if (remoteCache[project][moduleName] && !HMRMap.has(module))
+            return remoteCache[project][moduleName];
+          const { data } = await axios.get(
+            `${config.remote[project]}/${moduleName}`
+          );
+          return data + addonCode;
+        } catch (e) {
+          log(
+            `Request module was not found, returns an empty module--${config.remote[project]}/${moduleName}`,
+            "grey"
+          );
 
-        if (FEDERATION_RE.test(id)) {
-          let source = id.match(FEDERATION_RE) as string[];
-          let projectName = source[1];
-          let moduleName = source[2];
-
-          //alias
-          if (remoteList[projectName]) {
-            for (let i of remoteList[projectName]) {
-              if (i.name === moduleName.split(".")[0]) {
-                moduleName =
-                  basename(i.url, ".js") +
-                  (moduleName.split(".")[1]
-                    ? "." + moduleName.split(".")[1]
-                    : "");
-                break;
-              }
-            }
-          }
-
-          if (!config.cache) {
-            try {
-              const { data } = await axios.get(
-                `${config.remote[projectName]}/${normalizeFileName(moduleName)}`
-              );
-              return data;
-            } catch (e) {
-              log(
-                `Request module was not found, returns an empty module--${
-                  config.remote[projectName]
-                }/${normalizeFileName(moduleName)}`,
-                "grey"
-              );
-
-              return "";
-            }
-          }
-          const fileName = normalizeFileName(moduleName);
-
-          if (!source || !remoteCache[projectName][fileName]) return;
-          if (extname(fileName) === ".js")
-            return remoteCache[projectName][fileName];
-          // return replaceImportDeclarations(
-          //   remoteCache[projectName][fileName],
-          //   config.externals,
-          //   projectName
-          // );
-          if (extname(fileName) === ".css") {
-            return remoteCache[projectName][fileName];
-          }
+          return "";
         }
       }
     },
@@ -364,13 +304,8 @@ export default function HomePlugin(config: homeConfig): any {
         /src(.*)\.(vue|js|ts|jsx|tsx)$/.test(id) &&
         !/node_modules\//.test(id)
       ) {
-        if (vueConfig.resolve) code = vueExtension(code);
-        if (!config.cache && command !== "build") {
-          code = replaceHMRImportDeclarations(code, HMRMap);
-        }
-
         if (config.mode === "hot" && command === "build") {
-          code = replaceHotImportDeclarations(code, config);
+          code = replaceHotImportDeclarations(code, config, aliasMap);
         }
         return code;
       }
@@ -399,19 +334,6 @@ export default function HomePlugin(config: homeConfig): any {
             },
           ],
         };
-        // return html.replace(
-        //   /<title>(.*?)<\/title>/,
-        //   (_: string, js: string) => {
-        //     return (
-        //       _ +
-        //       `\n<script type="importmap">
-        //     {
-        //       "imports":${JSON.stringify(config.externals)}
-        //     }
-        //     </script>`
-        //     );
-        //   }
-        // );
       }
     },
   };

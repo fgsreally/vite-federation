@@ -1,6 +1,5 @@
 <script setup lang="ts">
-// import "!app/App.css";
-import app from "!app/app.vue";
+import app from "!app/app.v";
 // import "!app/App.css";
 // import app from "!app/App.vue";
 import { h, ref } from "vue";
