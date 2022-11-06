@@ -24,3 +24,5 @@ tsconfig.federation.json
 *.njsproj
 *.sln
 *.sw?
+
+federation-type
