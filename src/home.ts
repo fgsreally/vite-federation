@@ -42,7 +42,6 @@ const _dirname =
     ? __dirname
     : dirname(fileURLToPath(import.meta.url));
 function reloadModule(id: string, time: number) {
-  ///@virtual:vite-federation/!app/App
   const { moduleGraph } = server;
   const module = moduleGraph.getModuleById(VIRTUAL_PREFIX + id);
 

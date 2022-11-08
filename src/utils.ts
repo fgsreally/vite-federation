@@ -22,7 +22,7 @@ import {
   VIRTUAL_PREFIX,
 } from "./common";
 
-export const TYPES_CACHE = resolve(process.cwd(), "federation-type");
+export const TYPES_CACHE = resolve(process.cwd(), ".federation-type");
 const HMT_TYPES_TIMEOUT = 5000;
 
 export function HMRModuleHandler(url: string) {

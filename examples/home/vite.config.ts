@@ -29,7 +29,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           mode: mode,
           cache: true,
           importMap: true,
-          types: false,
+          types: true,
           info: false,
         });
 

@@ -25,4 +25,5 @@ tsconfig.federation.json
 *.sln
 *.sw?
 
-federation-type
+.federation-type
+.federation-cache
