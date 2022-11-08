@@ -1,10 +1,9 @@
-import fs from "fs";
 import sirv from "sirv";
 import axios from "axios";
-import { basename, extname, relative, resolve, dirname } from "path";
+import {  extname, resolve, dirname } from "path";
 import URL, { fileURLToPath } from "url";
 import { init } from "es-module-lexer";
-import { externals, homeConfig, remoteListType, VisModuleGraph } from "./types";
+import { externals, homeConfig, remoteListType } from "./types";
 import type { ResolvedConfig, ModuleNode, ViteDevServer, Update } from "vite";
 import type {
   PluginContext,

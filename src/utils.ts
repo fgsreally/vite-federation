@@ -6,7 +6,13 @@ import { ImportSpecifier, parse } from "es-module-lexer";
 import { homeConfig, externals, ModulePathMap, remoteListType } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
-import { outputFileSync, outputJSONSync, readJSONSync } from "fs-extra";
+import {
+  outputFileSync,
+  outputJSONSync,
+  readJSONSync,
+  existsSync,
+  outputFile,
+} from "fs-extra";
 import MagicString from "magic-string";
 import { minVersion } from "semver";
 import {
@@ -318,4 +324,25 @@ export function resolveModuleAlias(id: string, alias: remoteListType) {
   }
 
   return [project, baseName + (extname(moduleName) || ".js"), baseName];
+}
+
+export async function getVirtualContent(
+  url: string,
+  project: string,
+  moduleName: string,
+  allowCache: boolean
+) {
+  let path = resolve(process.cwd(), ".federation-cache", project, moduleName);
+
+  if (allowCache) {
+    if (existsSync(path)) {
+      return fs.readFileSync(path, "utf-8");
+    }
+  }
+
+  let { data } = await axios.get(url);
+  if (allowCache) {
+    outputFile(path, data);
+  }
+  return data;
 }
