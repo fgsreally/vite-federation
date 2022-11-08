@@ -27,7 +27,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
             app: "http://127.0.0.1:8080", //remote static server
           },
           mode: mode,
-          cache: false,
+          cache: true,
           importMap: true,
           types: false,
           info: false,
@@ -35,7 +35,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 
   return {
     optimizeDeps: {
-      exclude: ["/@virtual:vite-federation/!app/*"],
+      exclude: ["/@virtual:vite-federation/!app/*"],//it doesn't work
     },
     server: {
       port: 4100,

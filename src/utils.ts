@@ -330,7 +330,7 @@ export async function getVirtualContent(
   url: string,
   project: string,
   moduleName: string,
-  allowCache: boolean
+  allowCache?: boolean
 ) {
   let path = resolve(process.cwd(), ".federation-cache", project, moduleName);
 
@@ -341,8 +341,13 @@ export async function getVirtualContent(
   }
 
   let { data } = await axios.get(url);
+  let content = typeof data === "string" ? data : JSON.stringify(data);
   if (allowCache) {
-    outputFile(path, data);
+    outputFile(
+      path,
+      content,
+      "utf-8"
+    );
   }
-  return data;
+  return content;
 }

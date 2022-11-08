@@ -27,9 +27,6 @@ type Metadata = {
   author?: string;
 };
 
-interface homeVueconfig {
-  resolve: boolean;
-}
 export interface homeConfig {
   externals?: externals;
   version?: number;
@@ -39,7 +36,7 @@ export interface homeConfig {
   importMap: boolean;
   types?: boolean;
   info?: boolean;
-
+  prefetch: boolean;
 }
 
 export type remoteListType = {
