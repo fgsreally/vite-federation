@@ -1,4 +1,4 @@
-import { ModuleNode } from "vite";
+import { ModuleNode, normalizePath } from "vite";
 import axios from "axios";
 import { extname, join, relative, resolve } from "path";
 import URL from "url";
@@ -169,7 +169,7 @@ export function getModuleName(fileName: string) {
 }
 
 export function getHMRFilePath(i: ModuleNode) {
-  return "/" + relative(process.cwd(), i?.file || "").replace(/\\/g, "/");
+  return "/" + normalizePath(relative(process.cwd(), i?.file || ""));
 }
 
 export async function sendHMRInfo({
@@ -212,12 +212,9 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
   let tsconfig: any = { compilerOptions: { paths: {} } };
 
   for (let i in modulePathMap) {
-    let jsPath =
-      "./" +
-      join(`./federation-type/${project}`, modulePathMap[i]).replace(
-        /\\/g,
-        "/"
-      );
+    let jsPath = normalizePath(
+      "./" + join(`./federation-type/${project}`, modulePathMap[i])
+    );
     tsconfig.compilerOptions.paths[`!${project}/${i}.*`] = [jsPath];
     tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
     // if (modulePathMap[i].endsWith(".vue")) {
@@ -265,7 +262,7 @@ export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
   fs.readdirSync(dirPath, { withFileTypes: true }).forEach(function (file) {
     var filePath = join(dirPath, file.name);
     if (file.isFile()) {
-      fileSet.push(relative(rootDir, filePath).replace("\\", "/"));
+      fileSet.push(normalizePath(relative(rootDir, filePath)));
     } else if (file.isDirectory()) {
       traverseDic(filePath);
     }

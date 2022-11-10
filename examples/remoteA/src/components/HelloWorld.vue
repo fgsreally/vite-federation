@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { share } from "./share";
+import { share } from "../utils/share";
 const count = ref(10);
 
 type props = {

@@ -5,7 +5,7 @@ import { remoteConfig } from "./types";
 import fs from "fs";
 import fse from "fs-extra";
 import contentHash from "content-hash";
-
+import { normalizePath } from "vite";
 import type {
   PluginContext,
   OutputBundle,
@@ -155,10 +155,11 @@ export default function remotePart(config: remoteConfig): any {
       for (let i in data) {
         for (let entry of initEntryFiles) {
           if (basename(entry).split(".")[0] + ".js" === i) {
-            console.log((data[i] as OutputChunk).modules)
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
               if (fse.existsSync(fp) && !fp.includes("node_modules")) {
-                sourceGraph[entry].push(relative(process.cwd(), fp));
+                sourceGraph[normalizePath(entry)].push(
+                  normalizePath(relative(process.cwd(), fp))
+                );
               }
             });
           }
@@ -179,7 +180,9 @@ export default function remotePart(config: remoteConfig): any {
     resolveId(id: string, importer: string) {
       if (importer === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
         log(`Remote entry file --${id}`);
-        let fileName = relative(process.cwd(), resolve(importer, id));
+        let fileName = normalizePath(
+          relative(process.cwd(), resolve(importer, id))
+        );
         sourceGraph[fileName] = [];
         initEntryFiles.push(fileName);
       }

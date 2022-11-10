@@ -1,5 +1,4 @@
 import { get } from "lodash-es";
-import { share } from "./share";
 let obj = { a: 1 };
 /**
  * Code blocks are great for examples
@@ -12,5 +11,5 @@ let obj = { a: 1 };
 export function test() {
   console.log("remote-test");
   console.log(get(obj, "a"));
-  share()
+
 }
