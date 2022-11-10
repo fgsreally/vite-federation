@@ -5,7 +5,6 @@ import { provide, ref } from "vue";
 </script>
 
 <template>
-  <el-button>Remote Component</el-button>
   <Example msg="msg" />
 </template>
 

@@ -30,7 +30,12 @@ import {
 } from "./utils";
 import { IncomingMessage } from "http";
 import { Graph } from "./graph";
-import { VIRTUAL_PREFIX, FEDERATION_RE, VIRTUAL_EMPTY, TS_CONFIG_PATH } from "./common";
+import {
+  VIRTUAL_PREFIX,
+  FEDERATION_RE,
+  VIRTUAL_EMPTY,
+  TS_CONFIG_PATH,
+} from "./common";
 import { existsSync } from "fs-extra";
 let server: ViteDevServer;
 let command = "build";
@@ -122,12 +127,9 @@ export default function HomePlugin(config: homeConfig): any {
 
   // 返回的是插件对象
   return {
-    name: "federation-h",
-    configResolved(resolvedConfig: ResolvedConfig) {
+    name: "vite:federation-h",
+    async configResolved(resolvedConfig: ResolvedConfig) {
       command = resolvedConfig.command;
-    },
-
-    async options(opts: InputOptions) {
       let ext: externals = {};
 
       await init;
@@ -194,6 +196,9 @@ export default function HomePlugin(config: homeConfig): any {
         log(`FINAL EXTERNALS :`);
         console.table(config.externals);
       }
+    },
+
+    async options(opts: InputOptions) {
       //补充external,也可以在rollupOption中弄
       if (!opts.external) opts.external = [];
       for (let i in config.externals) {

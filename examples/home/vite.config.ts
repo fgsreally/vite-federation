@@ -35,7 +35,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 
   return {
     optimizeDeps: {
-      exclude: ["!app/*"],//it doesn't work
+      exclude: [], //it doesn't work
     },
     server: {
       port: 4100,

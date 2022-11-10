@@ -45,7 +45,7 @@ export default function remotePart(config: remoteConfig): any {
   };
   // 返回的是插件对象
   return {
-    name: "federation-r",
+    name: "vite:federation-r",
     apply: "build",
     enforce: "pre",
     async options(opts: RollupOptions) {

@@ -4,10 +4,10 @@ defineProps({
   msg: String,
 });
 let dom = ref(null);
-function click() {
-  r_app_test_test(); //import { test } from "!app/test";
-  alert("test click");
-}
+// function click() {
+//   r_app_test_test(); //import { test } from "!app/test";
+//   alert("test click");
+// }
 </script>
 
 <template>
@@ -17,7 +17,7 @@ function click() {
   <!-- // import hello from "!app/hello";
  -->
 
-  <r-app-app @firstClick="click" value="msg from home "></r-app-app>
+  <!-- <r-app-app @firstClick="click" value="msg from home "></r-app-app> -->
   <!-- import app from "!app/app.v";
  -->
 </template>
