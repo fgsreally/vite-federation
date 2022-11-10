@@ -30,7 +30,8 @@ import {
 } from "./utils";
 import { IncomingMessage } from "http";
 import { Graph } from "./graph";
-import { VIRTUAL_PREFIX, FEDERATION_RE, VIRTUAL_EMPTY } from "./common";
+import { VIRTUAL_PREFIX, FEDERATION_RE, VIRTUAL_EMPTY, TS_CONFIG_PATH } from "./common";
+import { existsSync } from "fs-extra";
 let server: ViteDevServer;
 let command = "build";
 
@@ -96,6 +97,7 @@ function reloadModule(id: string, time: number) {
 
 async function getTypes(url: string, project: string) {
   try {
+    if (existsSync(TS_CONFIG_PATH)) return;
     let entryFileCode = await downloadTSFiles(url, project);
 
     if (entryFileCode) {
@@ -112,7 +114,9 @@ async function getTypes(url: string, project: string) {
 }
 
 export default function HomePlugin(config: homeConfig): any {
-  let compList: any = {};
+  log(`--vite-federation is running--`);
+  if (config.cache) log("--Use Local Cache--");
+  if (config.prefetch) log(`--Use Prefetch Mode--`);
 
   const graph = new Graph(Object.keys(config.remote));
 
@@ -120,9 +124,6 @@ export default function HomePlugin(config: homeConfig): any {
   return {
     name: "federation-h",
     configResolved(resolvedConfig: ResolvedConfig) {
-      log(`--vite-federation is running--`);
-      if (config.cache) log("--Use Local Cache--");
-
       command = resolvedConfig.command;
     },
 
@@ -136,7 +137,6 @@ export default function HomePlugin(config: homeConfig): any {
             getTypes(config.remote[i] + "/types/types.json", i);
           }
           //向远程请求清单
-          compList[i] = [];
           remoteCache[i] = {};
 
           let remoteInfo: any = JSON.parse(
@@ -165,7 +165,7 @@ export default function HomePlugin(config: homeConfig): any {
               console.log(remoteInfo);
             }
 
-            if (config.cache) {
+            if (config.prefetch) {
               for (let j of aliasMap[i]) {
                 //cache
                 let url = `${config.remote[i]}/${j.url}.js`;
@@ -178,7 +178,6 @@ export default function HomePlugin(config: homeConfig): any {
                   `${j.url}.js`,
                   config.cache
                 );
-                log(`prefetch module --${i}/${j.name}`, "yellow");
               }
             }
           }
@@ -284,7 +283,7 @@ export default function HomePlugin(config: homeConfig): any {
             `${config.remote[project]}/${moduleName}`,
             project,
             moduleName,
-            config.cache
+            config.cache && !HMRMap.has(module)
           );
           return data;
         } catch (e) {

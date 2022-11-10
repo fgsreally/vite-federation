@@ -20,10 +20,11 @@ import {
   VIRTUAL_HMR_PREFIX,
   ESM_SH_URL,
   VIRTUAL_PREFIX,
+  TS_CONFIG_PATH,
+  HMT_TYPES_TIMEOUT,
 } from "./common";
 
 export const TYPES_CACHE = resolve(process.cwd(), ".federation-type");
-const HMT_TYPES_TIMEOUT = 5000;
 
 export function HMRModuleHandler(url: string) {
   let ret = resolveURLQuery(url) as any;
@@ -47,13 +48,6 @@ export function HMRTypesHandler(url: string, remoteConfig: externals) {
 
 export function normalizeFileName(name: string) {
   return `${name}${extname(name) ? "" : ".js"}`;
-}
-
-export function cancelScoped(source: string): string {
-  let newSource = source.replace(/<style.*?>([\s\S]+?)<\/style>/, (_, js) => {
-    return js;
-  });
-  return `<style>${newSource}</style>`;
 }
 
 export function replaceImportDeclarations(source: any, externals: externals) {
@@ -232,7 +226,7 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
     //   tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
     // }
   }
-  outputJSONSync(resolve(process.cwd(), "tsconfig.federation.json"), tsconfig);
+  outputJSONSync(TS_CONFIG_PATH, tsconfig);
 }
 
 export async function updateTypesFile(
@@ -343,11 +337,7 @@ export async function getVirtualContent(
   let { data } = await axios.get(url);
   let content = typeof data === "string" ? data : JSON.stringify(data);
   if (allowCache) {
-    outputFile(
-      path,
-      content,
-      "utf-8"
-    );
+    outputFile(path, content, "utf-8");
   }
   return content;
 }

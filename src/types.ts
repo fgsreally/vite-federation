@@ -36,7 +36,7 @@ export interface homeConfig {
   importMap: boolean;
   types?: boolean;
   info?: boolean;
-  prefetch: boolean;
+  prefetch?: boolean;
 }
 
 export type remoteListType = {
