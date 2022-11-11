@@ -9,29 +9,28 @@ export default defineConfig({
   plugins: [
     vue(),
     //just output d.ts
-    dts({
-      //standard d.ts location
-      outputDir: "remote/types",
-      compilerOptions: { removeComments: false },
-      afterBuild: () => {
-        //collect all d.ts info
-        traverseDic(resolve(process.cwd(), "remote/types"), (params) => {
-          outputJSONSync(
-            resolve(process.cwd(), "remote/types/types.json"),
-            params
-          );
-        });
-      },
-    }),
+    // dts({
+    //   //standard d.ts location
+    //   outputDir: "remote/types",
+    //   compilerOptions: { removeComments: false },
+    //   afterBuild: () => {
+    //     //collect all d.ts info
+    //     traverseDic(resolve(process.cwd(), "remote/types"), (params) => {
+    //       outputJSONSync(
+    //         resolve(process.cwd(), "remote/types/types.json"),
+    //         params
+    //       );
+    //     });
+    //   },
+    // }),
     remotePlugin({
       entry: "src/micro.ts", //if use typescript,fileName must be micro.ts
-      externals:   
-      {
+      externals: {
         vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",
         "element-plus":
           "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.12/index.full.mjs",
       },
-   
+      types: true,
       HMR: {
         projectName: "app",
         homePort: "http://localhost:4100",
@@ -42,5 +41,3 @@ export default defineConfig({
     ,
   ],
 });
-
-

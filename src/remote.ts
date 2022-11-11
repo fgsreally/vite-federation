@@ -3,7 +3,7 @@ import { init } from "es-module-lexer";
 import type { ResolvedConfig } from "vite";
 import { remoteConfig } from "./types";
 import fs from "fs";
-import fse from "fs-extra";
+import fse, { outputJSONSync } from "fs-extra";
 import contentHash from "content-hash";
 import { normalizePath } from "vite";
 import type {
@@ -20,9 +20,11 @@ import {
   log,
   replaceEntryFile,
   ImportExpression,
+  traverseDic,
 } from "./utils";
-import { VIRTUAL_HMR_PREFIX } from "./common";
 
+import { VIRTUAL_HMR_PREFIX } from "./common";
+import dts from "vite-plugin-dts";
 interface HMRInfo {
   changeFile: string;
   cssFiles: { [key in string]: number };
@@ -44,7 +46,7 @@ export default function remotePart(config: remoteConfig): any {
     ...config.vue,
   };
   // 返回的是插件对象
-  return {
+  const bundlePlugin = {
     name: "vite:federation-r",
     apply: "build",
     enforce: "pre",
@@ -221,4 +223,21 @@ export default function remotePart(config: remoteConfig): any {
       });
     },
   };
+
+  const typePlugin = dts({
+    //standard d.ts location
+    outputDir: "remote/types",
+    compilerOptions: { removeComments: false },
+    afterBuild: () => {
+      //collect all d.ts info
+      traverseDic(resolve(process.cwd(), "remote/types"), (params) => {
+        outputJSONSync(
+          resolve(process.cwd(), "remote/types/types.json"),
+          params
+        );
+      });
+    },
+  });
+
+  return config.types ? [typePlugin, bundlePlugin] : [bundlePlugin];
 }

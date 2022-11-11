@@ -8,8 +8,8 @@ let obj = { a: 1 };
  * const instance = new MyClass();
  * ```
  */
-export function test() {
-  console.log("remote-test");
-  console.log(get(obj, "a"));
+export function test(name:string) {
+  console.log(name);
+  console.log(get(obj, "a"),1);
 
 }
