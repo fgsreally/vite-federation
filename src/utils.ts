@@ -214,7 +214,7 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
 
   for (let i in modulePathMap) {
     let jsPath = normalizePath(
-      "./" + join(`./federation-type/${project}`, modulePathMap[i])
+      "./" + join(`./.federation-type/${project}`, modulePathMap[i])
     );
     tsconfig.compilerOptions.paths[`!${project}/${i}.*`] = [jsPath];
     tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];

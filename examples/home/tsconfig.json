@@ -23,11 +23,10 @@
         "src/**/*.tsx",
         "src/**/*.vue",
         "./auto-imports.d.ts",
+        "./federation.d.ts",
         "./components.d.ts"
     ],
     "references": [
-        {
-            "path": "./tsconfig.node.json"
-        }
+
     ]
 }
