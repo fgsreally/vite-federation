@@ -10,4 +10,4 @@ export const TS_CONFIG_PATH = resolve(
   "tsconfig.federation.json"
 );
 
-export const HMT_TYPES_TIMEOUT = 5000;
+export const HMT_TYPES_TIMEOUT = 3000;

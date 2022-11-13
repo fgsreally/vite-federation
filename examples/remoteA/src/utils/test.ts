@@ -10,6 +10,6 @@ let obj = { a: 1 };
  */
 export function test(name:string) {
   console.log(name);
-  console.log(get(obj, "a"),1);
+  console.log(get(obj, "a"),100);
 
 }

@@ -117,6 +117,7 @@ export default function remotePart(config: remoteConfig): any {
         try {
           let ret = await sendHMRInfo({
             url: `${config.HMR?.homePort}/${VIRTUAL_HMR_PREFIX}`,
+            types: config.types || false,
             project: config.HMR.projectName,
             module: updateList,
             file: relative(

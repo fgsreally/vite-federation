@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { h, ref } from "vue";
-import app from "!app/app.v";
+import app from "!app/app.v";//extension .v
 defineProps({
   msg: String,
 });
 let dom = ref(null);
 function click() {
-  r_app_test_test(); //import { test } from "!app/test";
+  r_app_test_test('11'); //import { test } from "!app/test";
   alert("test click");
 }
 </script>

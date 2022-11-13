@@ -40,13 +40,19 @@ export function HMRModuleHandler(url: string) {
 }
 
 export function HMRTypesHandler(url: string, remoteConfig: externals) {
-  let { file, project } = resolveURLQuery(url) as any;
-  if (file.endsWith(".ts")) {
+  let { file, project, module, types } = resolveURLQuery(url) as any;
+
+  if (
+    types &&
+    (module as string[]).some((item) => item.endsWith(".js")) &&
+    !(file as string).endsWith(".js")
+  ) {
     setTimeout(() => {
+      log(`update types file`, "blue");
       updateTypesFile(
         URL.resolve(remoteConfig[project], "types/"),
         project,
-        file.replace(/\.ts$/, ".d.ts")
+        file.endsWith(".ts") ? file.replace(/\.ts$/, ".d.ts") : file + ".d.ts"
       );
     }, HMT_TYPES_TIMEOUT);
   }
@@ -163,8 +169,6 @@ export function replaceBundleImportDeclarations(
   return newSource.toString();
 }
 
-
-
 export function getModuleName(fileName: string) {
   return fileName.replace(extname(fileName), "");
 }
@@ -176,16 +180,20 @@ export function getHMRFilePath(i: ModuleNode) {
 export async function sendHMRInfo({
   url,
   project,
+  types,
   file,
   module,
 }: {
   url: string;
+  types: boolean;
   project: string;
   file: string;
   module: string[];
 }) {
   return await axios.get(
-    `${url}?file=${file}&project=${project}&module=${JSON.stringify(module)}`
+    `${url}?file=${file}&project=${project}&module=${JSON.stringify(
+      module
+    )}&types=${types}`
   );
 }
 
@@ -195,6 +203,7 @@ export function resolveURLQuery(url: string) {
   let query = new URLSearchParams(queryUrl);
   return {
     file: query.get("file"),
+    types: query.get("types") === "true" ? true : false,
     project: query.get("project"),
     module: JSON.parse(query.get("module") as string) as string[],
   };
@@ -210,7 +219,12 @@ export async function analyseTSEntry(code: string) {
 }
 
 export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
-  let tsconfig: any = { compilerOptions: { paths: {} } };
+  let tsconfig: any = {
+    compilerOptions: {
+      baseUrl: ".",
+      paths: {},
+    },
+  };
 
   for (let i in modulePathMap) {
     let jsPath = normalizePath(
@@ -236,8 +250,10 @@ export async function updateTypesFile(
     let { data } = await axios.get(URL.resolve(baseUrl, filePath));
     let p = resolve(TYPES_CACHE, project, filePath);
     outputFileSync(p, data);
-    log(`update types file --${p}`, "blue");
-  } catch (e) {}
+    // log(`update types file --${p}`, "blue");
+  } catch (e) {
+    log(`update types file failed`, "red");
+  }
 }
 export async function downloadTSFiles(url: string, project: string) {
   let { data } = await axios.get(url);
@@ -272,7 +288,7 @@ export function traverseDic(dirPath: string, cb?: (opt: string[]) => void) {
 }
 
 export function log(msg: string, color: keyof Color = "green") {
-  console.log(colors[color](`\n${colors.cyan(`[vite:federation]`)} ${msg}`));
+  console.log(colors[color](`${colors.cyan(`[vite:federation]`)} ${msg}`));
 }
 
 export function replaceEntryFile(code: string, source: string) {

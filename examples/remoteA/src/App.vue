@@ -9,7 +9,7 @@
     :props="defaultProps"
   />
   <div @click="$emit('firstClick')">{{ props.value }}</div>
-  <HelloWorld msg="never test again!!!"></HelloWorld>
+  <HelloWorld msg="never test again!"></HelloWorld>
 </template>
 
 <script setup lang="ts">
@@ -81,7 +81,7 @@ const data = [
 </script>
 <style>
 .testTree {
-  background-color: red !important;
+  background-color: yellowgreen !important;
   width: 100px;
 }
 </style>
