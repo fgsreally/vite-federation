@@ -38,6 +38,7 @@ export interface homeConfig {
   types?: boolean;
   info?: boolean;
   prefetch?: boolean;
+  extensions: extensionType[];
 }
 
 export type remoteListType = {
@@ -80,4 +81,9 @@ export type VisModuleGraph = {
       size: number;
     };
   }[];
+};
+
+export type extensionType = {
+  key: string;
+  transform: (basename: string) => string;
 };

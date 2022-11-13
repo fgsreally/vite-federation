@@ -21,12 +21,12 @@ import {
   updateTSconfig,
   HMRTypesHandler,
   log,
-  vueExtension,
   replaceImportDeclarations,
   resolvePathToModule,
   resolveModuleAlias,
   getHMRFilePath,
   getVirtualContent,
+  resolveExtension,
 } from "./utils";
 import { IncomingMessage } from "http";
 import { Graph } from "./graph";
@@ -39,14 +39,15 @@ import {
 import { existsSync } from "fs-extra";
 let server: ViteDevServer;
 let command = "build";
-
-const HMRMap: Map<string, number> = new Map();
-const remoteCache: any = {};
-const aliasMap: remoteListType = {};
 const _dirname =
   typeof __dirname !== "undefined"
     ? __dirname
     : dirname(fileURLToPath(import.meta.url));
+const HMRMap: Map<string, number> = new Map();
+const remoteCache: any = {};
+const aliasMap: remoteListType = {};
+let extensionKey: string[] = [];
+
 function reloadModule(id: string, time: number) {
   const { moduleGraph } = server;
   const module = moduleGraph.getModuleById(VIRTUAL_PREFIX + id);
@@ -77,7 +78,7 @@ function reloadModule(id: string, time: number) {
           acceptedPath: path,
           timestamp: time,
         });
-        if (i.file?.endsWith(".v")) {
+        if (extensionKey.includes(extname(i.file as string))) {
           //vue hmr logic
           for (let j of (i as ModuleNode).importers) {
             moduleGraph.invalidateModule(j);
@@ -88,7 +89,7 @@ function reloadModule(id: string, time: number) {
               acceptedPath: parentPath,
               timestamp: time,
             });
-            HMRMap.set(id.split(".")[0] + ".v", time);
+            HMRMap.set(id.split(".")[0] + extname(i.file as string), time);
           }
         }
       }
@@ -122,7 +123,8 @@ export default function HomePlugin(config: homeConfig): any {
   log(`--vite-federation is running--`);
   if (config.cache) log("--Use Local Cache--");
   if (config.prefetch) log(`--Use Prefetch Mode--`);
-
+  if (config.extensions)
+    extensionKey = config.extensions.map((item) => item.key);
   const graph = new Graph(Object.keys(config.remote));
 
   // 返回的是插件对象
@@ -273,9 +275,13 @@ export default function HomePlugin(config: homeConfig): any {
       if (id.startsWith(VIRTUAL_PREFIX)) {
         let [project, moduleName, baseName] = resolveModuleAlias(id, aliasMap);
 
-        if (extname(moduleName) === ".v") {
-          return vueExtension(baseName);
-        }
+        let ret = resolveExtension(
+          config.extensions || [],
+          moduleName,
+          baseName
+        );
+        if (typeof ret === "string") return ret;
+
         let module = `!${project}/${moduleName}`;
         try {
           if (remoteCache[project][moduleName] && !HMRMap.has(module))

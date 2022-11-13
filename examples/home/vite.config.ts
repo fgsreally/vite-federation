@@ -1,6 +1,11 @@
 import { ConfigEnv, defineConfig, UserConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { devPlugin, homePlugin, FederationResolver } from "vite-federation";
+import {
+  devPlugin,
+  homePlugin,
+  FederationResolver,
+  vExtension,
+} from "vite-federation";
 import legacy from "@vitejs/plugin-legacy";
 import Inspect from "vite-plugin-inspect";
 import AutoImport from "unplugin-auto-import/vite";
@@ -30,6 +35,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
           cache: true,
           importMap: true,
           types: true,
+          extensions: [vExtension],
           info: false,
         });
 

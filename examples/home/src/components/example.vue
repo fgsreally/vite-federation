@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { h, ref } from "vue";
+import app from "!app/app.v";
 defineProps({
   msg: String,
 });
@@ -16,8 +17,8 @@ function click() {
   <r-app-hello ref="dom" msg="test"></r-app-hello>
   <!-- // import hello from "!app/hello";
  -->
-
-  <r-app-app @firstClick="click" value="msg from home "></r-app-app>
+  <app @firstClick="click" value="msg from home "></app>
+  <!-- <r-app-app @firstClick="click" value="msg from home "></r-app-app> -->
   <!-- import app from "!app/app.v";
  -->
 </template>

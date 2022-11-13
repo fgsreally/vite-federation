@@ -3,7 +3,13 @@ import axios from "axios";
 import { extname, join, relative, resolve } from "path";
 import URL from "url";
 import { ImportSpecifier, parse } from "es-module-lexer";
-import { homeConfig, externals, ModulePathMap, remoteListType } from "./types";
+import {
+  homeConfig,
+  externals,
+  ModulePathMap,
+  remoteListType,
+  extensionType,
+} from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
 import {
@@ -157,12 +163,7 @@ export function replaceBundleImportDeclarations(
   return newSource.toString();
 }
 
-export function vueExtension(moduleName: string) {
-  return `import Comp from "./${moduleName}.js"\n
-   export default Comp
-  import "./${moduleName}.css"
-  `;
-}
+
 
 export function getModuleName(fileName: string) {
   return fileName.replace(extname(fileName), "");
@@ -337,4 +338,16 @@ export async function getVirtualContent(
     outputFile(path, content, "utf-8");
   }
   return content;
+}
+
+export function resolveExtension(
+  extensions: extensionType[],
+  moduleName: string,
+  basename: string
+) {
+  for (let i of extensions) {
+    if (extname(moduleName) === i.key) {
+      return i.transform(basename);
+    }
+  }
 }
