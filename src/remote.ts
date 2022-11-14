@@ -21,6 +21,8 @@ import {
   replaceEntryFile,
   ImportExpression,
   traverseDic,
+  getRelatedPath,
+  getAlias,
 } from "./utils";
 
 import { VIRTUAL_HMR_PREFIX } from "./common";
@@ -34,11 +36,12 @@ let HMRconfig: HMRInfo = {
   cssFiles: {},
 };
 let initEntryFiles: string[] = [];
+let entryFileMap: { [key: string]: string } = {};
 let metaData: any;
 let alias: { name: string; url: string }[];
 let sourceGraph: { [key: string]: string[] } = {};
 export default function remotePart(config: remoteConfig): any {
-  metaData = config.meta || {};
+  // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
   let vueConfig = {
     delScoped: true,
@@ -158,12 +161,24 @@ export default function remotePart(config: remoteConfig): any {
       for (let i in data) {
         for (let entry of initEntryFiles) {
           if (basename(entry).split(".")[0] + ".js" === i) {
+            let entryFilePath = (entryFileMap[getAlias(i, alias) as string] =
+              normalizePath(
+                getRelatedPath(
+                  (data[i] as OutputChunk).facadeModuleId as string
+                )
+              ));
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
               if (fse.existsSync(fp) && !fp.includes("node_modules")) {
-                sourceGraph[normalizePath(entry)].push(
-                  normalizePath(relative(process.cwd(), fp))
-                );
+                if (!sourceGraph[entryFilePath])
+                  sourceGraph[entryFilePath] = [];
+                sourceGraph[entryFilePath].push(getRelatedPath(fp));
               }
+            });
+            (data[i] as OutputChunk).imports.forEach((item) => {
+              if (item in data)
+                sourceGraph[entryFilePath].push(
+                  getAlias(item, alias) as string
+                );
             });
           }
         }
@@ -181,12 +196,11 @@ export default function remotePart(config: remoteConfig): any {
     },
 
     resolveId(id: string, importer: string) {
-      if (importer === resolve(process.cwd(), entryFile).replace(/\\/g, "/")) {
+      if (importer === normalizePath(resolve(process.cwd(), entryFile))) {
         log(`Remote entry file --${id}`);
         let fileName = normalizePath(
-          relative(process.cwd(), resolve(importer, id))
+          relative(process.cwd(), resolve(importer, "../", id))
         );
-        sourceGraph[fileName] = [];
         initEntryFiles.push(fileName);
       }
     },
@@ -215,11 +229,16 @@ export default function remotePart(config: remoteConfig): any {
         }
         let p = resolve(dir, "remoteList.json");
         log(`Write asset list--${p}`, "green");
-        metaData.files = files;
-        metaData.config = config;
-        metaData.initEntryFiles = initEntryFiles;
-        metaData.alias = alias;
-        metaData.sourceGraph = sourceGraph;
+        metaData = {
+          ...(config.meta || {}),
+          files,
+          config,
+          alias,
+          initEntryFiles,
+          entryFileMap,
+          sourceGraph,
+        };
+
         fse.outputJSON(p, metaData);
       });
     },

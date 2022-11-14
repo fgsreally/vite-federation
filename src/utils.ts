@@ -367,3 +367,15 @@ export function resolveExtension(
     }
   }
 }
+
+export function getRelatedPath(p: string) {
+  return normalizePath(relative(process.cwd(), p));
+}
+
+export function getAlias(
+  filename: string,
+  alias: { name: string; url: string }[]
+) {
+  if (extname(filename) === ".js")
+    return alias.find((item) => item.url === filename.split(".")[0])?.name;
+}
