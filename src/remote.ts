@@ -39,7 +39,7 @@ let initEntryFiles: string[] = [];
 let entryFileMap: { [key: string]: string } = {};
 let metaData: any;
 let alias: { name: string; url: string }[];
-let sourceGraph: { [key: string]: string[] } = {};
+let sourceGraph: { [key: string]: Set<string> } = {};
 export default function remotePart(config: remoteConfig): any {
   // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
@@ -167,18 +167,15 @@ export default function remotePart(config: remoteConfig): any {
                   (data[i] as OutputChunk).facadeModuleId as string
                 )
               ));
+            if (!sourceGraph[entryFilePath])
+              sourceGraph[entryFilePath] = new Set();
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
-              if (fse.existsSync(fp) && !fp.includes("node_modules")) {
-                if (!sourceGraph[entryFilePath])
-                  sourceGraph[entryFilePath] = [];
-                sourceGraph[entryFilePath].push(getRelatedPath(fp));
-              }
+              if (fse.existsSync(fp) && !fp.includes("node_modules"))
+                sourceGraph[entryFilePath].add(getRelatedPath(fp));
             });
             (data[i] as OutputChunk).imports.forEach((item) => {
               if (item in data)
-                sourceGraph[entryFilePath].push(
-                  getAlias(item, alias) as string
-                );
+                sourceGraph[entryFilePath].add(getAlias(item, alias) as string);
             });
           }
         }
@@ -201,7 +198,7 @@ export default function remotePart(config: remoteConfig): any {
         let fileName = normalizePath(
           relative(process.cwd(), resolve(importer, "../", id))
         );
-        initEntryFiles.push(fileName);
+        if (!initEntryFiles.includes(fileName)) initEntryFiles.push(fileName);
       }
     },
     transform(code: string, id: string) {
@@ -229,6 +226,12 @@ export default function remotePart(config: remoteConfig): any {
         }
         let p = resolve(dir, "remoteList.json");
         log(`Write asset list--${p}`, "green");
+
+        const outputSourceGraph: { [key: string]: string[] } = {};
+        for (let i in sourceGraph) {
+          outputSourceGraph[i] = [...sourceGraph[i]];
+        }
+
         metaData = {
           ...(config.meta || {}),
           files,
@@ -236,7 +239,7 @@ export default function remotePart(config: remoteConfig): any {
           alias,
           initEntryFiles,
           entryFileMap,
-          sourceGraph,
+          sourceGraph: outputSourceGraph,
         };
 
         fse.outputJSON(p, metaData);
