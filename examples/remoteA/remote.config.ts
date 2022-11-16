@@ -6,6 +6,7 @@ import dts from "vite-plugin-dts";
 import { resolve } from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
+
   plugins: [
     vue(),
     //just output d.ts
@@ -23,6 +24,7 @@ export default defineConfig({
     //     });
     //   },
     // }),
+   
     remotePlugin({
       entry: "src/micro.ts", //if use typescript,fileName must be micro.ts
       externals: {
@@ -30,7 +32,7 @@ export default defineConfig({
         "element-plus":
           "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.12/index.full.mjs",
       },
-      types: true,
+      types: false,
       HMR: {
         projectName: "app",
         homePort: "http://localhost:4100",

@@ -1,17 +1,19 @@
 import { basename, relative, resolve } from "path";
 import { init } from "es-module-lexer";
-import type { ResolvedConfig } from "vite";
+import type { ResolvedConfig, UserConfig } from "vite";
 import { remoteConfig } from "./types";
 import fs from "fs";
 import fse, { outputJSONSync } from "fs-extra";
 import contentHash from "content-hash";
-import { normalizePath } from "vite";
+import { normalizePath, PluginOption } from "vite";
 import type {
   PluginContext,
   OutputBundle,
   OutputChunk,
-  RollupOptions,
   OutputOptions,
+  InputOptions,
+  NormalizedOutputOptions,
+  ModuleInfo,
 } from "rollup";
 import {
   replaceBundleImportDeclarations,
@@ -40,7 +42,10 @@ let entryFileMap: { [key: string]: string } = {};
 let metaData: any;
 let alias: { name: string; url: string }[];
 let sourceGraph: { [key: string]: Set<string> } = {};
-export default function remotePart(config: remoteConfig): any {
+let importsGraph: { [key: string]: Set<string> } = {};
+// let dependenceGraph: { [key: string]: Set<string> } = {};
+
+export default function remotePart(config: remoteConfig): PluginOption {
   // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
   let vueConfig = {
@@ -53,7 +58,7 @@ export default function remotePart(config: remoteConfig): any {
     name: "vite:federation-r",
     apply: "build",
     enforce: "pre",
-    async options(opts: RollupOptions) {
+    async options(opts: InputOptions) {
       await init;
 
       if (!opts.external) opts.external = [];
@@ -65,7 +70,8 @@ export default function remotePart(config: remoteConfig): any {
     },
 
     //init config
-    async config(opts: ResolvedConfig) {
+    async config(opts: UserConfig) {
+      if (!opts.build) opts.build = {};
       if (!opts.build.outDir) {
         opts.build.outDir = config.outDir || "remote";
       }
@@ -82,6 +88,8 @@ export default function remotePart(config: remoteConfig): any {
           },
         };
       }
+
+      if (opts.build.emptyOutDir === undefined) opts.build.emptyOutDir = false;
       if (!opts.build.rollupOptions) {
         opts.build.rollupOptions = {};
       }
@@ -123,10 +131,12 @@ export default function remotePart(config: remoteConfig): any {
             types: config.types || false,
             project: config.HMR.projectName,
             module: updateList,
-            file: relative(
-              resolve(process.cwd(), entryFile, "../"),
-              HMRconfig.changeFile
-            ).replace(/\\/g, "/"),
+            file: normalizePath(
+              relative(
+                resolve(process.cwd(), entryFile, "../"),
+                HMRconfig.changeFile
+              )
+            ),
           });
           // let ret = await axios.get(
           //   `${config.HMR?.homePort}/${VIRTUAL_HMR_PREFIX}/!${
@@ -150,7 +160,7 @@ export default function remotePart(config: remoteConfig): any {
         }
       }
     },
-    generateBundle(p: PluginContext, data: OutputBundle) {
+    generateBundle(_: NormalizedOutputOptions, data: OutputBundle) {
       let code = ((data["remoteEntry.js"] as OutputChunk).code =
         replaceEntryFile(
           (data["remoteEntry.js"] as OutputChunk).code,
@@ -169,6 +179,7 @@ export default function remotePart(config: remoteConfig): any {
               ));
             if (!sourceGraph[entryFilePath])
               sourceGraph[entryFilePath] = new Set();
+
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
               if (fse.existsSync(fp) && !fp.includes("node_modules"))
                 sourceGraph[entryFilePath].add(getRelatedPath(fp));
@@ -177,9 +188,47 @@ export default function remotePart(config: remoteConfig): any {
               if (item in data)
                 sourceGraph[entryFilePath].add(getAlias(item, alias) as string);
             });
+            Object.entries((data[i] as OutputChunk).importedBindings).forEach(
+              (item) => {
+                let packageName = item[0];
+                if (!(packageName in data)) {
+                  if (!importsGraph[packageName])
+                    importsGraph[packageName] = new Set();
+
+                  item[1].forEach((f) => importsGraph[packageName].add(f));
+                }
+              }
+            );
           }
         }
       }
+
+      const outputSourceGraph: { [key: string]: string[] } = {};
+      const outputimportsGraph: { [key: string]: string[] } = {};
+      for (let i in sourceGraph) {
+        outputSourceGraph[i] = [...sourceGraph[i]];
+      }
+      for (let i in importsGraph) {
+        outputimportsGraph[i] = [...importsGraph[i]];
+      }
+
+      metaData = {
+        ...(config.meta || {}),
+        files: Object.keys(data),
+        externals: Object.keys(config.externals),
+        config,
+        alias,
+        initEntryFiles,
+        entryFileMap,
+        sourceGraph: outputSourceGraph,
+        importsGraph: outputimportsGraph,
+      };
+      (this as any).emitFile({
+        type: "asset",
+        name: "remoteList",
+        fileName: "remoteList.json",
+        source: JSON.stringify(metaData),
+      });
 
       if (config.importMap) return;
       for (let i in data) {
@@ -194,7 +243,7 @@ export default function remotePart(config: remoteConfig): any {
 
     resolveId(id: string, importer: string) {
       if (importer === normalizePath(resolve(process.cwd(), entryFile))) {
-        log(`Remote entry file --${id}`);
+        log(`Find entry file --${id}`);
         let fileName = normalizePath(
           relative(process.cwd(), resolve(importer, "../", id))
         );
@@ -211,39 +260,8 @@ export default function remotePart(config: remoteConfig): any {
               config.project || "federation-r"
             }";block.fileID="${basename(id)}";}</federation>`
           );
-          // log(` (.vue) remove scoped style --${id}`);
-          // cancelScoped(code);
         }
       }
-    },
-
-    closeBundle() {
-      let dir = resolve(process.cwd(), config.outDir || "remote");
-
-      fs.readdir(dir, (err, files) => {
-        if (err) {
-          log(`Write asset error`, "red");
-        }
-        let p = resolve(dir, "remoteList.json");
-        log(`Write asset list--${p}`, "green");
-
-        const outputSourceGraph: { [key: string]: string[] } = {};
-        for (let i in sourceGraph) {
-          outputSourceGraph[i] = [...sourceGraph[i]];
-        }
-
-        metaData = {
-          ...(config.meta || {}),
-          files,
-          config,
-          alias,
-          initEntryFiles,
-          entryFileMap,
-          sourceGraph: outputSourceGraph,
-        };
-
-        fse.outputJSON(p, metaData);
-      });
     },
   };
 
@@ -262,5 +280,5 @@ export default function remotePart(config: remoteConfig): any {
     },
   });
 
-  return config.types ? [typePlugin, bundlePlugin] : [bundlePlugin];
+  return config.types ? ([typePlugin, bundlePlugin] as any) : [bundlePlugin];
 }

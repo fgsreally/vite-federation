@@ -42,10 +42,15 @@ export interface homeConfig {
 }
 
 export type remoteListType = {
-  [key in string]: {
-    name: string;
-    url: string;
-  }[];
+  files: string[];
+  config: remoteConfig;
+  externals: string[];
+  alias: { name: string; url: string }[];
+  initEntryFiles: string[];
+  entryFileMap: { [key: string]: string };
+  sourceGraph: { [key: string]: string[] };
+  dependenceGraph: { [key: string]: string[] };
+  importsGraph: { [key: string]: string[] };
 };
 
 export type ModulePathMap = { [key in string]: string };
