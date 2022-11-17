@@ -47,7 +47,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
       port: 4100,
     },
     plugins: [
-      Inspect(),
+      // Inspect(),
       vue(),
       AutoImport({
         resolvers: [ElementPlusResolver(), FederationResolver()],

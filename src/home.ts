@@ -1,9 +1,10 @@
+import colors from "colors";
 import sirv from "sirv";
 import axios from "axios";
 import { extname, resolve, dirname } from "path";
 import URL, { fileURLToPath } from "url";
 import { init } from "es-module-lexer";
-import { externals, homeConfig, remoteListType } from "./types";
+import { aliasType, externals, homeConfig } from "./types";
 import type { ResolvedConfig, ModuleNode, ViteDevServer, Update } from "vite";
 import type {
   PluginContext,
@@ -45,7 +46,7 @@ const _dirname =
     : dirname(fileURLToPath(import.meta.url));
 const HMRMap: Map<string, number> = new Map();
 const remoteCache: any = {};
-const aliasMap: remoteListType = {};
+const aliasMap: { [key: string]: aliasType[] } = {};
 let extensionKey: string[] = [];
 
 function reloadModule(id: string, time: number) {
@@ -125,7 +126,7 @@ export default function HomePlugin(config: homeConfig): any {
   if (config.prefetch) log(`--Use Prefetch Mode--`);
   if (config.extensions)
     extensionKey = config.extensions.map((item) => item.key);
-  const graph = new Graph(Object.keys(config.remote));
+  const graph = new Graph(Object.keys(config.remote), config.extensions || []);
 
   // 返回的是插件对象
   return {
@@ -212,7 +213,33 @@ export default function HomePlugin(config: homeConfig): any {
 
     configureServer(_server: ViteDevServer) {
       server = _server;
-      let { ws } = _server;
+      let {
+        ws,
+        resolvedUrls,
+        printUrls,
+        config: {
+          server: { https, port },
+        },
+      } = _server;
+
+      server.printUrls = () => {
+        const colorUrl = (url: string) =>
+          colors.green(
+            url.replace(/:(\d+)\//, (_, port) => `:${colors.bold(port)}/`)
+          );
+        const host =
+          server.resolvedUrls?.local[0].replace(/\/$/, "") ||
+          `${https ? "https" : "http"}://localhost:${port || "5143"}`;
+
+        printUrls();
+        // eslint-disable-next-line no-console
+
+        console.log(
+          `  ${colors.green("➜")}  ${colors.bold("Federation")}: ${colorUrl(
+            `${host}/__federation/`
+          )}`
+        );
+      };
 
       server.middlewares.use(
         "/__federation",

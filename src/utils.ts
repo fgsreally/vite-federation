@@ -7,8 +7,8 @@ import {
   homeConfig,
   externals,
   ModulePathMap,
-  remoteListType,
   extensionType,
+  aliasType,
 } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
@@ -97,7 +97,7 @@ export function ImportExpression(source: string) {
 export function replaceHotImportDeclarations(
   source: any,
   config: homeConfig,
-  aliasMap: remoteListType
+  aliasMap: { [key: string]: aliasType[] }
 ) {
   const [imports] = parse(source, "optional-sourcename");
   // let newSource = source;
@@ -321,7 +321,10 @@ export function resolvePathToModule(id: string) {
   return "";
 }
 
-export function resolveModuleAlias(id: string, alias: remoteListType) {
+export function resolveModuleAlias(
+  id: string,
+  alias: { [key: string]: aliasType[] }
+) {
   let [_, project, moduleName] = id.match(FEDERATION_RE) as string[];
 
   let baseName = moduleName.split(".")[0];

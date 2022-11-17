@@ -48,6 +48,7 @@ let importsGraph: { [key: string]: Set<string> } = {};
 export default function remotePart(config: remoteConfig): PluginOption {
   // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
+  const ouput=config.outDir || "remote"
   let vueConfig = {
     delScoped: true,
     addTag: true,
@@ -73,7 +74,7 @@ export default function remotePart(config: remoteConfig): PluginOption {
     async config(opts: UserConfig) {
       if (!opts.build) opts.build = {};
       if (!opts.build.outDir) {
-        opts.build.outDir = config.outDir || "remote";
+        opts.build.outDir = ouput;
       }
       if (config.cssSplit) {
         opts.build.cssCodeSplit = true;
@@ -267,11 +268,11 @@ export default function remotePart(config: remoteConfig): PluginOption {
 
   const typePlugin = dts({
     //standard d.ts location
-    outputDir: "remote/types",
+    outputDir: `${ouput}/types`,
     compilerOptions: { removeComments: false },
     afterBuild: () => {
       //collect all d.ts info
-      traverseDic(resolve(process.cwd(), "remote/types"), (params) => {
+      traverseDic(resolve(process.cwd(),`${ouput}/types`), (params) => {
         outputJSONSync(
           resolve(process.cwd(), "remote/types/types.json"),
           params

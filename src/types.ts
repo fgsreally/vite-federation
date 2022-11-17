@@ -90,5 +90,11 @@ export type VisModuleGraph = {
 
 export type extensionType = {
   key: string;
+  color?: string;
   transform: (basename: string) => string;
+};
+
+export type aliasType = {
+  name: string;
+  url: string;
 };

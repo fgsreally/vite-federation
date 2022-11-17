@@ -11,8 +11,8 @@
   "dependencies": {
     "element-plus": "^2.2.2",
     "lodash-es": "^4.17.21",
-    "vite-federation": "workspace:^0.0.9",
-    "vite-plugin-dts": "^1.4.1",
+    "vite-federation": "workspace:*",
+   
     "vue": "^3.2.25"
   },
   "devDependencies": {

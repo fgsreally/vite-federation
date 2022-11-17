@@ -1,5 +1,5 @@
 import { extname } from "path";
-import { VisModuleGraph } from "./types";
+import { extensionType, VisModuleGraph } from "./types";
 import { FEDERATION_RE } from "./common";
 
 let getOffset = (() => {
@@ -16,25 +16,23 @@ let getOffset = (() => {
   };
 })();
 
-function getColor(ext: string) {
-  switch (ext) {
-    case ".css":
-      return "#cb62f8";
-    default:
-      return "#f82941";
-  }
-}
-
 let index = 0;
 
 export class Graph {
   private moduleMap: { [key: string]: Set<string> } = {};
   private projectDep: { [key: string]: Set<string> } = {};
-  constructor(public projects: string[]) {
+  constructor(public projects: string[], public extensions: extensionType[]) {
     projects.forEach((item) => {
       this.moduleMap[item] = new Set();
       this.projectDep[item] = new Set();
     });
+  }
+
+  getColor(ext: string) {
+    if (ext === ".css") return "#cb62f8";
+    return this.extensions.find((item) => item.key === ext)?.color || "#f82941";
+
+  
   }
   addModule(id: string, importer: string) {
     let project = id.match(FEDERATION_RE)?.[1] as string;
@@ -71,7 +69,7 @@ export class Graph {
             x: offset[0] + Math.random(),
             size: 20,
             label: moduleID.match(FEDERATION_RE)?.[2] as string,
-            color: getColor(extname(moduleID)),
+            color: this.getColor(extname(moduleID)),
             y: offset[1] + Math.random(),
           },
         });
