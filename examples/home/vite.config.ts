@@ -5,6 +5,7 @@ import {
   homePlugin,
   FederationResolver,
   vExtension,
+  unpkg
 } from "vite-federation";
 import legacy from "@vitejs/plugin-legacy";
 import Inspect from "vite-plugin-inspect";

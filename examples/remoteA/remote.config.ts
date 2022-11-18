@@ -1,12 +1,11 @@
 import { outputJSONSync } from "fs-extra";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { remotePlugin, traverseDic, auto } from "vite-federation";
+import { remotePlugin, esmsh } from "vite-federation";
 import dts from "vite-plugin-dts";
 import { resolve } from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
-
   plugins: [
     vue(),
     //just output d.ts
@@ -24,14 +23,10 @@ export default defineConfig({
     //     });
     //   },
     // }),
-   
+
     remotePlugin({
       entry: "src/micro.ts", //if use typescript,fileName must be micro.ts
-      externals: {
-        vue: "https://cdn.bootcdn.net/ajax/libs/vue/3.2.33/vue.esm-browser.js",
-        "element-plus":
-          "https://cdn.bootcdn.net/ajax/libs/element-plus/2.2.12/index.full.mjs",
-      },
+      externals: esmsh(["vue", "element-plus"]),
       types: false,
       HMR: {
         projectName: "app",

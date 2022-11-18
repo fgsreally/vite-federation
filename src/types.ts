@@ -51,6 +51,7 @@ export type remoteListType = {
   sourceGraph: { [key: string]: string[] };
   dependenceGraph: { [key: string]: string[] };
   importsGraph: { [key: string]: string[] };
+  timestamp:number
 };
 
 export type ModulePathMap = { [key in string]: string };

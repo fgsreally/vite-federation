@@ -48,7 +48,7 @@ let importsGraph: { [key: string]: Set<string> } = {};
 export default function remotePart(config: remoteConfig): PluginOption {
   // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
-  const ouput=config.outDir || "remote"
+  const ouput = config.outDir || "remote";
   let vueConfig = {
     delScoped: true,
     addTag: true,
@@ -215,6 +215,7 @@ export default function remotePart(config: remoteConfig): PluginOption {
 
       metaData = {
         ...(config.meta || {}),
+        timestamp: Date.now(),
         files: Object.keys(data),
         externals: Object.keys(config.externals),
         config,
@@ -272,9 +273,9 @@ export default function remotePart(config: remoteConfig): PluginOption {
     compilerOptions: { removeComments: false },
     afterBuild: () => {
       //collect all d.ts info
-      traverseDic(resolve(process.cwd(),`${ouput}/types`), (params) => {
+      traverseDic(resolve(process.cwd(), `${ouput}/types`), (params) => {
         outputJSONSync(
-          resolve(process.cwd(), "remote/types/types.json"),
+          resolve(process.cwd(), `${ouput}/types/types.json`),
           params
         );
       });

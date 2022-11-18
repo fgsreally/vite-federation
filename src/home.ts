@@ -1,10 +1,9 @@
 import colors from "colors";
 import sirv from "sirv";
-import axios from "axios";
 import { extname, resolve, dirname } from "path";
 import URL, { fileURLToPath } from "url";
 import { init } from "es-module-lexer";
-import { aliasType, externals, homeConfig } from "./types";
+import { aliasType, externals, homeConfig, remoteListType } from "./types";
 import type { ResolvedConfig, ModuleNode, ViteDevServer, Update } from "vite";
 import type {
   PluginContext,
@@ -28,6 +27,7 @@ import {
   getHMRFilePath,
   getVirtualContent,
   resolveExtension,
+  getRemoteContent,
 } from "./utils";
 import { IncomingMessage } from "http";
 import { Graph } from "./graph";
@@ -44,6 +44,7 @@ const _dirname =
   typeof __dirname !== "undefined"
     ? __dirname
     : dirname(fileURLToPath(import.meta.url));
+
 const HMRMap: Map<string, number> = new Map();
 const remoteCache: any = {};
 const aliasMap: { [key: string]: aliasType[] } = {};
@@ -121,7 +122,6 @@ async function getTypes(url: string, project: string) {
 }
 
 export default function HomePlugin(config: homeConfig): any {
-  log(`--vite-federation is running--`);
   if (config.cache) log("--Use Local Cache--");
   if (config.prefetch) log(`--Use Prefetch Mode--`);
   if (config.extensions)
@@ -144,29 +144,45 @@ export default function HomePlugin(config: homeConfig): any {
           //向远程请求清单
           remoteCache[i] = {};
 
-          let remoteInfo: any = JSON.parse(
-            await getVirtualContent(
-              config.remote[i] + "/remoteList.json",
-              i,
-              "remoteList.json",
-              config.cache
-            )
+          let { data, isCache } = await getVirtualContent(
+            config.remote[i] + "/remoteList.json",
+            i,
+            "remoteList.json",
+            config.cache
           );
-          // let { data: remoteInfo } = await axios.get();
+          let remoteInfo: remoteListType = JSON.parse(data);
+
+          if (config.cache) {
+            if (isCache) {
+              let localInfo: remoteListType = remoteInfo;
+              remoteInfo = await getRemoteContent(
+                config.remote[i] + "/remoteList.json"
+              );
+
+              if (localInfo.timestamp !== remoteInfo.timestamp) {
+                log(
+                  `[project ${i}]: local and remote may be different,you may need to remove the cache dir to update the version`,
+                  "red"
+                );
+              }
+            } else {
+              log("--Create Local Cache--");
+            }
+          }
 
           ext = { ...ext, ...remoteInfo.config.externals };
 
           aliasMap[i] = remoteInfo.alias;
 
           if (command !== "build") {
-            log(`REMOTE MODULE (${i}) MAP:`);
+            log(`Remote Module [${i}] Map:`);
             console.table(remoteInfo.alias);
 
-            log(`REMOTE MODULE (${i}) ASSET LIST:`);
+            log(`Remote Module [${i}] Asset List:`);
             console.table(remoteInfo.files);
 
             if (config.info) {
-              log(`REMOTE MODULE (${i}) CONFIG`);
+              log(`Remote Module [${i}] config`);
               console.log(remoteInfo);
             }
 
@@ -174,29 +190,21 @@ export default function HomePlugin(config: homeConfig): any {
               for (let j of aliasMap[i]) {
                 //cache
                 let url = `${config.remote[i]}/${j.url}.js`;
-                // let { data } = await axios.get(url);
-                // log(`cache module --${i}/${j.name}`, "yellow");
-                // remoteCache[i][`${j.url}.js`] = data;
-                remoteCache[i][`${j.url}.js`] = await getVirtualContent(
-                  url,
-                  i,
-                  `${j.url}.js`,
-                  config.cache
-                );
+                remoteCache[i][`${j.url}.js`] = { data } =
+                  await getVirtualContent(url, i, `${j.url}.js`, config.cache);
               }
             }
           }
         } catch (e) {
           console.log(e);
           log(`can't find remote module (${i}) -- ${config.remote[i]}`, "red");
-          // process.exit(1);
         }
       }
 
       if (!config.externals) {
         //auto import remote config
         config.externals = ext;
-        log(`FINAL EXTERNALS :`);
+        log(`Final Externals :`);
         console.table(config.externals);
       }
     },
@@ -215,7 +223,6 @@ export default function HomePlugin(config: homeConfig): any {
       server = _server;
       let {
         ws,
-        resolvedUrls,
         printUrls,
         config: {
           server: { https, port },
@@ -232,8 +239,6 @@ export default function HomePlugin(config: homeConfig): any {
           `${https ? "https" : "http"}://localhost:${port || "5143"}`;
 
         printUrls();
-        // eslint-disable-next-line no-console
-
         console.log(
           `  ${colors.green("➜")}  ${colors.bold("Federation")}: ${colorUrl(
             `${host}/__federation/`
@@ -314,10 +319,7 @@ export default function HomePlugin(config: homeConfig): any {
           if (remoteCache[project][moduleName] && !HMRMap.has(module))
             return remoteCache[project][moduleName];
 
-          // const { data } = await axios.get(
-          //   `${config.remote[project]}/${moduleName}`
-          // );
-          let data = await getVirtualContent(
+          let { data } = await getVirtualContent(
             `${config.remote[project]}/${moduleName}`,
             project,
             moduleName,

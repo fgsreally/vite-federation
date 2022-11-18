@@ -1,7 +1,6 @@
-import { defineComponent as d, openBlock as s, createElementBlock as c, Fragment as p, createVNode as t, unref as m, createElementVNode as v, toDisplayString as f } from "vue";
-import { ElTree as u } from "element-plus";
-import b from "./HelloWorld.js";
-import "./share.js";
+import { defineComponent as d, openBlock as s, createElementBlock as c, Fragment as p, createVNode as t, unref as v, createElementVNode as f, toDisplayString as m } from "vue";
+import { ElTree as b } from "element-plus";
+import u from "./HelloWorld.js";
 const o = (e) => {
   e.projectID = "federation-r", e.fileID = "App.vue";
 }, h = /* @__PURE__ */ d({
@@ -11,7 +10,7 @@ const o = (e) => {
   },
   emits: ["firstClick"],
   setup(e, { emit: k }) {
-    const i = e, n = {
+    const n = e, i = {
       children: "children",
       label: "label"
     }, r = [
@@ -65,19 +64,19 @@ const o = (e) => {
       }
     ];
     return (a, l) => (s(), c(p, null, [
-      t(m(u), {
+      t(v(b), {
         class: "testTree",
         data: r,
         "show-checkbox": "",
         "node-key": "id",
         "default-expanded-keys": [2, 4],
         "default-checked-keys": [5],
-        props: n
+        props: i
       }),
-      v("div", {
+      f("div", {
         onClick: l[0] || (l[0] = (L) => a.$emit("firstClick"))
-      }, f(i.value), 1),
-      t(b, { msg: "never test again!!" })
+      }, m(n.value), 1),
+      t(u, { msg: "never test again!!" })
     ], 64));
   }
 });

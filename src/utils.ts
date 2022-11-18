@@ -15,16 +15,13 @@ import fs from "fs";
 import {
   outputFileSync,
   outputJSONSync,
-  readJSONSync,
   existsSync,
   outputFile,
 } from "fs-extra";
 import MagicString from "magic-string";
-import { minVersion } from "semver";
 import {
   FEDERATION_RE,
   VIRTUAL_HMR_PREFIX,
-  ESM_SH_URL,
   VIRTUAL_PREFIX,
   TS_CONFIG_PATH,
   HMT_TYPES_TIMEOUT,
@@ -304,17 +301,6 @@ export function replaceEntryFile(code: string, source: string) {
   return newSource.toString();
 }
 
-export function auto(imports?: string[]) {
-  //work for esm.sh
-  const { dependencies } = readJSONSync(resolve(process.cwd(), "package.json"));
-  let externals: externals = {};
-  for (let i in dependencies) {
-    if (!imports || imports.includes(i))
-      externals[i] = `${ESM_SH_URL}${i}@${minVersion(dependencies[i])}`;
-  }
-  return externals;
-}
-
 export function resolvePathToModule(id: string) {
   if (id.includes(VIRTUAL_PREFIX)) id = id.split(VIRTUAL_PREFIX)[1];
   if (FEDERATION_RE.test(id)) return id;
@@ -347,17 +333,28 @@ export async function getVirtualContent(
 
   if (allowCache) {
     if (existsSync(path)) {
-      return fs.readFileSync(path, "utf-8");
+      return { data: fs.readFileSync(path, "utf-8"), isCache: true };
     }
   }
 
-  let { data } = await axios.get(url);
+  let data = await getRemoteContent(url);
   let content = typeof data === "string" ? data : JSON.stringify(data);
   if (allowCache) {
-    outputFile(path, content, "utf-8");
+    setLocalContent(path, content);
   }
-  return content;
+  return { data: content, isCache: false,  };
 }
+
+export function setLocalContent(path: string, content: string) {
+  outputFile(path, content, "utf-8");
+}
+
+export async function getRemoteContent(url: string) {
+  let { data } = await axios.get(url);
+  return data;
+}
+
+
 
 export function resolveExtension(
   extensions: extensionType[],

@@ -5,6 +5,8 @@ export const VIRTUAL_PREFIX = "/@virtual:vite-federation/";
 export const VIRTUAL_EMPTY = "/@virtual:EmptyModule";
 export const VIRTUAL_HMR_PREFIX = "VIRTUAL-HMR";
 export const ESM_SH_URL = "https://esm.sh/";
+export const UNPKG_URL = "https://unpkg.com/";
+
 export const TS_CONFIG_PATH = resolve(
   process.cwd(),
   "tsconfig.federation.json"

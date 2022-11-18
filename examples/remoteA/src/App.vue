@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import { ref, inject } from "vue";
 import { ElTree } from "element-plus";
+import "element-plus/es/components/tree/style/css"
 import HelloWorld from "./components/HelloWorld.vue";
 
 

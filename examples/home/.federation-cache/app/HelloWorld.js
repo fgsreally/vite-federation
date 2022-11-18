@@ -1,13 +1,15 @@
-import { defineComponent as p, ref as _, openBlock as i, createElementBlock as f, Fragment as m, createElementVNode as e, toDisplayString as a, pushScopeId as h, popScopeId as v, createTextVNode as o } from "vue";
-import { s as g } from "./share.js";
+import { defineComponent as p, ref as _, openBlock as i, createElementBlock as h, Fragment as m, createElementVNode as e, toDisplayString as a, pushScopeId as f, popScopeId as v, createTextVNode as o } from "vue";
+function g() {
+  console.log("share");
+}
 const u = (t) => {
   t.projectID = "federation-r", t.fileID = "HelloWorld.vue";
-}, b = (t, l) => {
+}, b = (t, n) => {
   const r = t.__vccOpts || t;
-  for (const [n, c] of l)
-    r[n] = c;
+  for (const [l, c] of n)
+    r[l] = c;
   return r;
-}, s = (t) => (h("data-v-32b5ceff"), t = t(), v(), t), k = /* @__PURE__ */ s(() => /* @__PURE__ */ e("p", null, [
+}, s = (t) => (f("data-v-05257b79"), t = t(), v(), t), k = /* @__PURE__ */ s(() => /* @__PURE__ */ e("p", null, [
   /* @__PURE__ */ o(" Recommended IDE setup: "),
   /* @__PURE__ */ e("a", {
     href: "https://code.visualstudio.com/",
@@ -42,22 +44,22 @@ const u = (t) => {
     msg: null
   },
   setup(t) {
-    const l = _(10);
-    return g(), (r, n) => (i(), f(m, null, [
+    const n = _(10);
+    return g(), (r, l) => (i(), h(m, null, [
       e("h1", null, a(t.msg), 1),
       k,
       D,
       I,
       e("button", {
         type: "button",
-        onClick: n[0] || (n[0] = (c) => l.value++)
-      }, "count is: " + a(l.value), 1),
+        onClick: l[0] || (l[0] = (c) => n.value++)
+      }, "count is: " + a(n.value), 1),
       y
     ], 64));
   }
 });
 typeof u == "function" && u(d);
-const V = /* @__PURE__ */ b(d, [["__scopeId", "data-v-32b5ceff"]]);
+const S = /* @__PURE__ */ b(d, [["__scopeId", "data-v-05257b79"]]);
 export {
-  V as default
+  S as default
 };
