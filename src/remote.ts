@@ -25,6 +25,8 @@ import {
   traverseDic,
   getRelatedPath,
   getAlias,
+  copySourceFile,
+  isSourceFile,
 } from "./utils";
 
 import { VIRTUAL_HMR_PREFIX } from "./common";
@@ -173,21 +175,26 @@ export default function remotePart(config: remoteConfig): PluginOption {
         for (let entry of initEntryFiles) {
           if (basename(entry).split(".")[0] + ".js" === i) {
             let entryFilePath = (entryFileMap[getAlias(i, alias) as string] =
-              normalizePath(
-                getRelatedPath(
-                  (data[i] as OutputChunk).facadeModuleId as string
-                )
+              getRelatedPath(
+                (data[i] as OutputChunk).facadeModuleId as string
+
               ));
             if (!sourceGraph[entryFilePath])
               sourceGraph[entryFilePath] = new Set();
-
             Object.keys((data[i] as OutputChunk).modules).forEach((fp) => {
-              if (fse.existsSync(fp) && !fp.includes("node_modules"))
+              if (isSourceFile(fp)) {
                 sourceGraph[entryFilePath].add(getRelatedPath(fp));
+              }
             });
             (data[i] as OutputChunk).imports.forEach((item) => {
-              if (item in data)
-                sourceGraph[entryFilePath].add(getAlias(item, alias) as string);
+              if (item in data) {
+                Object.keys((data[item] as OutputChunk).modules).forEach((fp) => {
+                  if (isSourceFile(fp)) {
+                    sourceGraph[entryFilePath].add(getRelatedPath(fp))
+                  }
+                })
+
+              }
             });
             Object.entries((data[i] as OutputChunk).importedBindings).forEach(
               (item) => {
@@ -232,6 +239,12 @@ export default function remotePart(config: remoteConfig): PluginOption {
         source: JSON.stringify(metaData),
       });
 
+      if (config.source) {
+        [...new Set(Object.values(outputSourceGraph).flat())].forEach((item) => {
+          copySourceFile(item, ouput)
+        })
+      }
+
       if (config.importMap) return;
       for (let i in data) {
         if (/.js$/.test(i)) {
@@ -258,8 +271,7 @@ export default function remotePart(config: remoteConfig): PluginOption {
           log(`Add projectID & fileID for VUE component --${id}`);
           return (
             code +
-            `\n<federation>export default (block)=>{block.projectID="${
-              config.project || "federation-r"
+            `\n<federation>export default (block)=>{block.projectID="${config.project || "federation-r"
             }";block.fileID="${basename(id)}";}</federation>`
           );
         }

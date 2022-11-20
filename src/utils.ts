@@ -17,6 +17,7 @@ import {
   outputJSONSync,
   existsSync,
   outputFile,
+  copy
 } from "fs-extra";
 import MagicString from "magic-string";
 import {
@@ -342,7 +343,7 @@ export async function getVirtualContent(
   if (allowCache) {
     setLocalContent(path, content);
   }
-  return { data: content, isCache: false,  };
+  return { data: content, isCache: false, };
 }
 
 export function setLocalContent(path: string, content: string) {
@@ -378,4 +379,15 @@ export function getAlias(
 ) {
   if (extname(filename) === ".js")
     return alias.find((item) => item.url === filename.split(".")[0])?.name;
+}
+
+
+export function copySourceFile(p: string, outdir: string) {
+  if (existsSync(resolve(process.cwd(), p))) {
+    copy(p, outdir)
+  }
+}
+
+export function isSourceFile(fp: string) {
+  return existsSync(fp) && !fp.includes("node_modules")
 }

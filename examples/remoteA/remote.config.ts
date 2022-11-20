@@ -1,13 +1,15 @@
-import { outputJSONSync } from "fs-extra";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { remotePlugin, esmsh } from "vite-federation";
-import dts from "vite-plugin-dts";
-import { resolve } from "path";
+
+import visualizer from "rollup-plugin-visualizer";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    //@ts-ignore
+    visualizer(),
     //just output d.ts
     // dts({
     //   //standard d.ts location

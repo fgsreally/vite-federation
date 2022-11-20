@@ -6,6 +6,7 @@ interface remoteVueconfig {
   addTag?: boolean;
 }
 export interface remoteConfig {
+  source?: boolean;
   outDir?: string;
   entry?: string;
   externals: externals;
@@ -51,7 +52,7 @@ export type remoteListType = {
   sourceGraph: { [key: string]: string[] };
   dependenceGraph: { [key: string]: string[] };
   importsGraph: { [key: string]: string[] };
-  timestamp:number
+  timestamp: number
 };
 
 export type ModulePathMap = { [key in string]: string };
