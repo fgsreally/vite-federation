@@ -384,10 +384,11 @@ export function getAlias(
 
 export function copySourceFile(p: string, outdir: string) {
   if (existsSync(resolve(process.cwd(), p))) {
-    copy(p, outdir)
+    copy(p, resolve(process.cwd(), outdir, 'source', p))
   }
 }
 
 export function isSourceFile(fp: string) {
   return existsSync(fp) && !fp.includes("node_modules")
 }
+

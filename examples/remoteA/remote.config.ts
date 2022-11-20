@@ -34,6 +34,7 @@ export default defineConfig({
         projectName: "app",
         homePort: "http://localhost:4100",
       },
+      source: true,
       cssSplit: true,
       importMap: true, //Negative if home is esm but not importmap
     }),

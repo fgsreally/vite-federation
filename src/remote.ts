@@ -50,7 +50,7 @@ let importsGraph: { [key: string]: Set<string> } = {};
 export default function remotePart(config: remoteConfig): PluginOption {
   // metaData = config.meta || {};
   let entryFile = config.entry || "micro.js";
-  const ouput = config.outDir || "remote";
+  const output = config.outDir || "remote";
   let vueConfig = {
     delScoped: true,
     addTag: true,
@@ -76,7 +76,7 @@ export default function remotePart(config: remoteConfig): PluginOption {
     async config(opts: UserConfig) {
       if (!opts.build) opts.build = {};
       if (!opts.build.outDir) {
-        opts.build.outDir = ouput;
+        opts.build.outDir = output;
       }
       if (config.cssSplit) {
         opts.build.cssCodeSplit = true;
@@ -193,7 +193,6 @@ export default function remotePart(config: remoteConfig): PluginOption {
                     sourceGraph[entryFilePath].add(getRelatedPath(fp))
                   }
                 })
-
               }
             });
             Object.entries((data[i] as OutputChunk).importedBindings).forEach(
@@ -240,8 +239,9 @@ export default function remotePart(config: remoteConfig): PluginOption {
       });
 
       if (config.source) {
+        fse.ensureDirSync(resolve(process.cwd(), output, 'source'));
         [...new Set(Object.values(outputSourceGraph).flat())].forEach((item) => {
-          copySourceFile(item, ouput)
+          copySourceFile(item, output)
         })
       }
 
@@ -281,13 +281,13 @@ export default function remotePart(config: remoteConfig): PluginOption {
 
   const typePlugin = dts({
     //standard d.ts location
-    outputDir: `${ouput}/types`,
+    outputDir: `${output}/types`,
     compilerOptions: { removeComments: false },
     afterBuild: () => {
       //collect all d.ts info
-      traverseDic(resolve(process.cwd(), `${ouput}/types`), (params) => {
+      traverseDic(resolve(process.cwd(), `${output}/types`), (params) => {
         outputJSONSync(
-          resolve(process.cwd(), `${ouput}/types/types.json`),
+          resolve(process.cwd(), `${output}/types/types.json`),
           params
         );
       });
