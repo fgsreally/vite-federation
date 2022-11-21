@@ -61,19 +61,20 @@ export default function remotePart(config: remoteConfig): PluginOption {
     name: "vite:federation-r",
     apply: "build",
     enforce: "pre",
-    async options(opts: InputOptions) {
-      await init;
+    // async options(opts: InputOptions) {
 
-      if (!opts.external) opts.external = [];
-      for (let i in config.externals) {
-        if (!(opts.external as any).includes(i)) {
-          (opts.external as any).push(i);
-        }
-      }
-    },
+    //   if (!opts.external) opts.external = [];
+    //   for (let i in config.externals) {
+    //     if (!(opts.external as any).includes(i)) {
+    //       (opts.external as any).push(i);
+    //     }
+    //   }
+    // },
 
     //init config
     async config(opts: UserConfig) {
+      await init;
+
       if (!opts.build) opts.build = {};
       if (!opts.build.outDir) {
         opts.build.outDir = output;
@@ -245,15 +246,15 @@ export default function remotePart(config: remoteConfig): PluginOption {
         })
       }
 
-      if (config.importMap) return;
-      for (let i in data) {
-        if (/.js$/.test(i)) {
-          (data[i] as OutputChunk).code = replaceBundleImportDeclarations(
-            (data[i] as OutputChunk).code,
-            config.externals
-          );
-        }
-      }
+      // if (config.importMap) return;
+      // for (let i in data) {
+      //   if (/.js$/.test(i)) {
+      //     (data[i] as OutputChunk).code = replaceBundleImportDeclarations(
+      //       (data[i] as OutputChunk).code,
+      //       config.externals
+      //     );
+      //   }
+      // }
     },
 
     resolveId(id: string, importer: string) {
@@ -263,6 +264,12 @@ export default function remotePart(config: remoteConfig): PluginOption {
           relative(process.cwd(), resolve(importer, "../", id))
         );
         if (!initEntryFiles.includes(fileName)) initEntryFiles.push(fileName);
+      }
+      if (config.importMap) {
+        if (id in config.externals) return { id, external: true }
+      } else {
+        if (id in config.externals) return { id: config.externals[id], external: true }
+
       }
     },
     transform(code: string, id: string) {
