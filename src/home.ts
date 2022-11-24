@@ -37,7 +37,7 @@ import {
   VIRTUAL_EMPTY,
   TS_CONFIG_PATH,
 } from "./common";
-import { existsSync } from "fs-extra";
+import fse from "fs-extra";
 let server: ViteDevServer;
 let command = "build";
 const _dirname =
@@ -105,7 +105,7 @@ function reloadModule(id: string, time: number) {
 
 async function getTypes(url: string, project: string) {
   try {
-    if (existsSync(TS_CONFIG_PATH)) return;
+    if (fse.existsSync(TS_CONFIG_PATH)) return;
     let entryFileCode = await downloadTSFiles(url, project);
 
     if (entryFileCode) {

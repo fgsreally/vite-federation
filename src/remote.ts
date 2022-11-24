@@ -3,7 +3,7 @@ import { init } from "es-module-lexer";
 import type { ResolvedConfig, UserConfig } from "vite";
 import { remoteConfig } from "./types";
 import fs from "fs";
-import fse, { outputJSONSync } from "fs-extra";
+import fse from "fs-extra";
 import contentHash from "content-hash";
 import { normalizePath, PluginOption } from "vite";
 import type {
@@ -293,7 +293,7 @@ export default function remotePart(config: remoteConfig): PluginOption {
     afterBuild: () => {
       //collect all d.ts info
       traverseDic(resolve(process.cwd(), `${output}/types`), (params) => {
-        outputJSONSync(
+       fse.outputJSONSync(
           resolve(process.cwd(), `${output}/types/types.json`),
           params
         );

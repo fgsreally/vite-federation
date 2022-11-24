@@ -12,13 +12,7 @@ import {
 } from "./types";
 import colors, { Color } from "colors";
 import fs from "fs";
-import {
-  outputFileSync,
-  outputJSONSync,
-  existsSync,
-  outputFile,
-  copy
-} from "fs-extra";
+import fse from "fs-extra";
 import MagicString from "magic-string";
 import {
   FEDERATION_RE,
@@ -236,7 +230,7 @@ export function updateTSconfig(project: string, modulePathMap: ModulePathMap) {
     //   tsconfig.compilerOptions.paths[`!${project}/${i}`] = [jsPath];
     // }
   }
-  outputJSONSync(TS_CONFIG_PATH, tsconfig);
+  fse.outputJSONSync(TS_CONFIG_PATH, tsconfig);
 }
 
 export async function updateTypesFile(
@@ -247,7 +241,7 @@ export async function updateTypesFile(
   try {
     let { data } = await axios.get(URL.resolve(baseUrl, filePath));
     let p = resolve(TYPES_CACHE, project, filePath);
-    outputFileSync(p, data);
+    fse.outputFileSync(p, data);
     // log(`update types file --${p}`, "blue");
   } catch (e) {
     log(`update types file failed`, "red");
@@ -264,7 +258,7 @@ export async function downloadTSFiles(url: string, project: string) {
         entryFileCode = code.replace(/^export declare/gm, "export");
       }
 
-      outputFileSync(resolve(TYPES_CACHE, project, i), code);
+      fse.outputFileSync(resolve(TYPES_CACHE, project, i), code);
     }
   }
   return entryFileCode;
@@ -333,7 +327,7 @@ export async function getVirtualContent(
   let path = resolve(process.cwd(), ".federation-cache", project, moduleName);
 
   if (allowCache) {
-    if (existsSync(path)) {
+    if ( fse.existsSync(path)) {
       return { data: fs.readFileSync(path, "utf-8"), isCache: true };
     }
   }
@@ -347,7 +341,7 @@ export async function getVirtualContent(
 }
 
 export function setLocalContent(path: string, content: string) {
-  outputFile(path, content, "utf-8");
+  fse.outputFile(path, content, "utf-8");
 }
 
 export async function getRemoteContent(url: string) {
@@ -383,12 +377,12 @@ export function getAlias(
 
 
 export function copySourceFile(p: string, outdir: string) {
-  if (existsSync(resolve(process.cwd(), p))) {
-    copy(p, resolve(process.cwd(), outdir, 'source', p))
+  if ( fse.existsSync(resolve(process.cwd(), p))) {
+    fse.copy(p, resolve(process.cwd(), outdir, 'source', p))
   }
 }
 
 export function isSourceFile(fp: string) {
-  return existsSync(fp) && !fp.includes("node_modules")
+  return  fse.existsSync(fp) && !fp.includes("node_modules")
 }
 

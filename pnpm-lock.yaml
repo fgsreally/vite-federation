@@ -86,29 +86,6 @@ importers:
       vite: registry.npmmirror.com/vite/3.1.8
       vue-tsc: registry.npmmirror.com/vue-tsc/0.34.16_typescript@4.7.2
 
-  examples/remote:
-    specifiers:
-      '@vitejs/plugin-vue': ^2.3.3
-      element-plus: ^2.2.2
-      lodash-es: ^4.17.21
-      typescript: ^4.5.4
-      vite: ^3.1.0
-      vite-federation: workspace:^0.0.7
-      vite-plugin-dts: ^1.4.1
-      vue: ^3.2.25
-      vue-tsc: ^0.34.7
-    dependencies:
-      element-plus: registry.npmmirror.com/element-plus/2.2.2_vue@3.2.36
-      lodash-es: registry.npmmirror.com/lodash-es/4.17.21
-      vite-federation: link:../..
-      vite-plugin-dts: registry.npmmirror.com/vite-plugin-dts/1.4.1_vite@3.1.8
-      vue: registry.npmmirror.com/vue/3.2.36
-    devDependencies:
-      '@vitejs/plugin-vue': registry.npmmirror.com/@vitejs/plugin-vue/2.3.3_vite@3.1.8+vue@3.2.36
-      typescript: registry.npmmirror.com/typescript/4.7.2
-      vite: registry.npmmirror.com/vite/3.1.8
-      vue-tsc: registry.npmmirror.com/vue-tsc/0.34.16_typescript@4.7.2
-
   examples/remoteA:
     specifiers:
       '@vitejs/plugin-vue': ^2.3.3
